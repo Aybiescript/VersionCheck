@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Version Time Machine</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+    <h1>Version Time Machine</h1>
+    <p class="subtitle">
+        Enter any date → see the <strong>real latest safe version</strong> (14+ days old!)
+    </p>
+</header>
+
+<div class="input-area">
+    <input type="date" id="dateInput" max="2026-11-12">
+    <button onclick="checkVersions()">Show Me!</button>
+</div>
+
+<div id="results"></div>
+
+<footer></footer>
+
+<script src="versions.js"></script>
+</body>
+</html>
