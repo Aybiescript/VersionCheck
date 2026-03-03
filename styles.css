@@ -12,7 +12,6 @@ body {
     color: #e0e0e5;
     font-size: 15px;          
 }
-
 header {
     text-align: center;
     padding: 50px 20px 30px;
@@ -78,6 +77,95 @@ button {
 button:hover {
     transform: translateY(-4px) scale(1.06);
     box-shadow: 0 14px 35px rgba(94, 92, 230, 0.55);
+}
+
+.link-block {
+    background: rgba(30, 30, 46, 0.85);
+    padding: 24px;
+    border-radius: 18px;
+    margin-bottom: 30px;
+    border: 1px solid rgba(255,255,255,0.07);
+    box-shadow: 0 14px 35px rgba(0,0,0,0.45);
+     transition: 0.35s ease;
+}
+
+.link-block:hover {
+    transform: translateY(-6px);
+    background: rgba(40,40,60,0.92);
+}
+
+.link-block h2 {
+    margin-top: 0;
+    font-size: 1.7rem;
+    color: #c4c4ff;
+}
+.links {
+    margin-top: 12px;
+}
+
+.link-pill {
+    display: inline-block;
+    margin-right: 14px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.08);
+    color: #c8d4ff;
+    font-weight: 500;
+    text-decoration: none;
+    font-size: 1rem;
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(8px);
+    transition: 0.35s ease;
+}
+
+.link-pill:hover {
+    background: rgba(120, 94, 255, 0.25);
+    color: white;
+    border-color: rgba(164, 137, 255, 0.6);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(94, 92, 230, 0.45);
+}
+
+
+.btn-red {
+    background: linear-gradient(90deg, #e63946, #d00000);
+    color: white;
+    box-shadow: 0 8px 20px rgba(220, 20, 60, 0.4);
+}
+
+.btn-red:hover {
+    transform: translateY(-4px) scale(1.06);
+    box-shadow: 0 14px 35px rgba(220, 20, 60, 0.55);
+}
+
+ .category-card {
+    background: rgba(30, 30, 46, 0.85);
+    padding: 28px;
+    border-radius: 20px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: 0.35s ease;
+    cursor: pointer;
+    text-align: center;
+}
+
+.category-card:hover {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.55);
+    background: rgba(40,40,60,0.92);
+}
+
+.category-card h2 {
+    margin: 0;
+    font-size: 1.8rem;
+     color: #c4c4ff;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px,1fr));
+    gap: 28px;
+    margin-top: 40px;
 }
 
 /* ---------- SECTION STYLES ---------- */
