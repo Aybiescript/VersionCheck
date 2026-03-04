@@ -9,15 +9,15 @@ Useful for:
 
 ## Features
 
-- Pick any date (default: today minus safety buffer)
+- Pick any date
 - Shows latest **Stable** versions as of that date for:
   - Browsers (Chrome, Edge, Firefox, Safari)
-  - macOS
-  - iOS
-  - iPadOS
-  - VMware ESXi
-  - .NET
-  - M365
+  - macOS (Ventura, Sonoma, Sequoia, Tahoe)
+  - iOS (16,17,18,26)
+  - iPadOS (16,17,18,26)
+  - VMware ESXi (7,8)
+  - .NET (8,9,10,11)
+  - M365 (Current Channel, Monthly Enterprise Channel)
 
 Browse Category wise to see EOL and Release Notes from a bunch of vendors
   - Browsers
