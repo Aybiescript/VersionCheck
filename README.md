@@ -2,6 +2,8 @@
 
 A simple web tool for moderators, compliance teams, and security auditors to check **what was the latest safe/real version** of popular software at any given date in the past.
 
+Live at: https://cool.cyberessentials.tools/versioncheck/
+
 Enter any date → instantly see the most recent **stable** versions of major platforms that were available **at that time** (with a safety buffer of +14 days).
 
 Useful for:
