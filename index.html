@@ -4,26 +4,355 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Version Time Machine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<header>
-    <h1>Version Time Machine</h1>
-    <p class="subtitle">
-        Enter any date → see the <strong>real latest safe version</strong> (14+ days old!)
-    </p>
-    <button class="btn-red" onclick="location.href='categories.html'">Browse Links for Release Notes and EOL Dates</button>
-</header>
+<!-- ═══════ NAV ═══════ -->
+<nav id="nav">
+    <div class="nav-inner">
+        <div class="nav-logo" onclick="showView('home')">
+            <span class="logo-icon">⏱</span>
+            <span>Version Time Machine</span>
+        </div>
+        <div class="nav-tabs" id="navTabs">
+            <button class="nav-tab active" data-view="home">Time Machine</button>
+            <button class="nav-tab" data-view="links">Release Notes</button>
+        </div>
+    </div>
+</nav>
 
-<div class="input-area">
-    <input type="date" id="dateInput" max="2027-01-01">
-    <button onclick="checkVersions()">Show Me!</button>  
+<!-- ═══════ HOME VIEW ═══════ -->
+<div id="view-home" class="view active">
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="orb orb1"></div>
+            <div class="orb orb2"></div>
+            <div class="orb orb3"></div>
+        </div>
+        <div class="hero-content">
+            <h1 class="hero-title">Version<br><em>Time Machine</em></h1>
+            <p class="hero-sub">Pick any date — instantly see the safest stable version of every major platform that was available then, with a built-in <strong>14-day buffer</strong>.</p>
+            <div class="date-picker-wrap">
+                <div class="date-picker-inner">
+                    <label for="dateInput">Assessment date</label>
+                    <input type="date" id="dateInput" max="2027-01-01">
+                    <button class="btn-primary" onclick="checkVersions()">
+                        <span>Show Versions</span>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div id="results" class="results-container"></div>
 </div>
-<div id="results"></div>
 
-<footer></footer>
+<!-- ═══════ LINKS VIEW ═══════ -->
+<div id="view-links" class="view">
+    <div class="links-view-inner">
+        <div class="links-hero">
+            <h2>Release Notes & EOL Sources</h2>
+            <p>Official vendor documentation for all supported platforms</p>
+            <div class="links-filter-row">
+                <input type="text" id="linkSearch" placeholder="Filter vendors…" oninput="filterLinks(this.value)">
+            </div>
+        </div>
+
+        <div id="linkCategories" class="link-categories">
+
+            <!-- BROWSERS -->
+            <div class="link-category" data-category="browsers">
+                <div class="lcat-header" onclick="toggleCategory(this)">
+                    <span class="lcat-icon">🌐</span>
+                    <span>Browsers</span>
+                    <span class="lcat-chevron">▾</span>
+                </div>
+                <div class="lcat-body">
+                    <div class="vendor-card">
+                        <h4>Chrome</h4>
+                        <a href="https://developer.chrome.com/release-notes" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Microsoft Edge</h4>
+                        <a href="https://learn.microsoft.com/en-us/deployedge/microsoft-edge-release-schedule" target="_blank" class="link-pill">Release Schedule</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Firefox</h4>
+                        <a href="https://www.mozilla.org/en-US/firefox/releases/" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Safari</h4>
+                        <a href="https://developer.apple.com/documentation/safari-release-notes" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Thunderbird</h4>
+                        <a href="https://www.thunderbird.net/en-US/thunderbird/releases/" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Brave</h4>
+                        <a href="https://brave.com/latest/" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OPERATING SYSTEMS -->
+            <div class="link-category" data-category="operating-systems">
+                <div class="lcat-header" onclick="toggleCategory(this)">
+                    <span class="lcat-icon">💻</span>
+                    <span>Operating Systems</span>
+                    <span class="lcat-chevron">▾</span>
+                </div>
+                <div class="lcat-body">
+                    <div class="vendor-card">
+                        <h4>Windows 10</h4>
+                        <a href="https://learn.microsoft.com/en-gb/lifecycle/products/windows-10-home-and-pro" target="_blank" class="link-pill">Home & Pro Lifecycle</a>
+                        <a href="https://learn.microsoft.com/en-gb/lifecycle/products/windows-10-enterprise-and-education" target="_blank" class="link-pill">Enterprise Lifecycle</a>
+                        <a href="https://learn.microsoft.com/en-gb/windows/whats-new/extended-security-updates" target="_blank" class="link-pill">Extended Security Updates</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Windows 11</h4>
+                        <a href="https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information" target="_blank" class="link-pill">Release Information</a>
+                        <a href="https://ce-knowledge-hub.iasme.co.uk/space/CEKH/2643689659/Windows+11" target="_blank" class="link-pill">IASME Knowledge Hub</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Windows Server</h4>
+                        <a href="https://learn.microsoft.com/en-us/windows/release-health/windows-server-release-info" target="_blank" class="link-pill">Release Information</a>
+                        <a href="https://learn.microsoft.com/en-us/lifecycle/products/windows-server-2016" target="_blank" class="link-pill">Server 2016 Lifecycle</a>
+                        <a href="https://learn.microsoft.com/en-us/windows-server/get-started/extended-security-updates-overview" target="_blank" class="link-pill">ESU Overview</a>
+                        <a href="https://ce-knowledge-hub.iasme.co.uk/space/CEKH/2643591499/Windows+Server" target="_blank" class="link-pill">IASME Knowledge Hub</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>macOS</h4>
+                        <a href="https://en.wikipedia.org/wiki/MacOS_Tahoe#Release_history" target="_blank" class="link-pill">Tahoe</a>
+                        <a href="https://en.wikipedia.org/wiki/MacOS_Sequoia#Release_history" target="_blank" class="link-pill">Sequoia</a>
+                        <a href="https://en.wikipedia.org/wiki/MacOS_Sonoma#Release_history" target="_blank" class="link-pill">Sonoma</a>
+                        <a href="https://en.wikipedia.org/wiki/MacOS_Ventura#Release_history" target="_blank" class="link-pill">Ventura</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>iOS</h4>
+                        <a href="https://en.wikipedia.org/wiki/IOS_26#Version_history" target="_blank" class="link-pill">iOS 26</a>
+                        <a href="https://en.wikipedia.org/wiki/IOS_18#Version_history" target="_blank" class="link-pill">iOS 18</a>
+                        <a href="https://en.wikipedia.org/wiki/IOS_16#Version_history" target="_blank" class="link-pill">iOS 16</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>iPadOS</h4>
+                        <a href="https://en.wikipedia.org/wiki/IPadOS_26#Version_history" target="_blank" class="link-pill">iPadOS 26</a>
+                        <a href="https://en.wikipedia.org/wiki/IPadOS_18#Version_history" target="_blank" class="link-pill">iPadOS 18</a>
+                        <a href="https://en.wikipedia.org/wiki/IPadOS_17#Version_history" target="_blank" class="link-pill">iPadOS 17</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>ChromeOS</h4>
+                        <a href="https://support.google.com/chrome/a/answer/10314655" target="_blank" class="link-pill">Updates & Support</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BUSINESS AV -->
+            <div class="link-category" data-category="business-av">
+                <div class="lcat-header" onclick="toggleCategory(this)">
+                    <span class="lcat-icon">🛡</span>
+                    <span>Business Antivirus</span>
+                    <span class="lcat-chevron">▾</span>
+                </div>
+                <div class="lcat-body">
+                    <div class="vendor-card">
+                        <h4>CleanMyMac</h4>
+                        <a href="https://macpaw.com/cleanmymac/whats-new" target="_blank" class="link-pill">What's New</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Webroot</h4>
+                        <a href="https://www.webroot.com/us/en/support/release-notes" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Datto AV</h4>
+                        <a href="https://edr.datto.com/help/Content/5-learn/release-notes/release-notes-av.htm" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Bitdefender</h4>
+                        <a href="https://www.bitdefender.com/business/support/en/77212-48453-release-notes.html" target="_blank" class="link-pill">Business Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>McAfee</h4>
+                        <a href="https://www.mcafee.com/support/s/article/000002208?language=en_US" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Sophos Intercept X</h4>
+                        <a href="https://docs.sophos.com/releasenotes/index.html?productGroupID=esg&productID=sesc_interceptx&versionID=allVersions" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>ESET Antivirus</h4>
+                        <a href="https://help.eset.com/latestVersions/" target="_blank" class="link-pill">Latest Versions</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Malwarebytes</h4>
+                        <a href="https://support.malwarebytes.com/hc/en-us/sections/360005863113-Release-History-News" target="_blank" class="link-pill">Release History</a>
+                        <a href="https://support.malwarebytes.com/hc/en-us/articles/39106724135315-Desktop-Security-for-Windows-5-2-8-173-Release-Notes" target="_blank" class="link-pill">Windows Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>ClamAV</h4>
+                        <a href="https://docs.clamav.net/faq/faq-eol.html" target="_blank" class="link-pill">EOL Information</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>AVG</h4>
+                        <a href="https://www.avg.com/en-gb/installation-files#pc" target="_blank" class="link-pill">Installation Files</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Panda Antivirus</h4>
+                        <a href="https://documents.managedprotection.pandasecurity.com/PAD360/ReleaseNotes/v77100/Customers/en-us/ReleaseNotesV2.html" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FIREWALLS -->
+            <div class="link-category" data-category="firewalls">
+                <div class="lcat-header" onclick="toggleCategory(this)">
+                    <span class="lcat-icon">🔥</span>
+                    <span>Firewalls</span>
+                    <span class="lcat-chevron">▾</span>
+                </div>
+                <div class="lcat-body">
+                    <div class="vendor-card">
+                        <h4>Barracuda</h4>
+                        <a href="https://campus.barracuda.com/product/cloudgenfirewall/doc/71860841/barracuda-nextgen-and-cloudgen-firewall-appliances-eos-eol-definitions" target="_blank" class="link-pill">EOS/EOL Definitions</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Unifi / Ubiquiti</h4>
+                        <a href="https://help.ui.com/hc/en-us/articles/1500001268521-Ubiquiti-s-Vintage-and-Legacy-Products" target="_blank" class="link-pill">Vintage & Legacy</a>
+                        <a href="https://www.clouduni.fi/blog/cloudkey-gen1-officially-end-of-life" target="_blank" class="link-pill">CloudKey Gen1 EOL</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Synology</h4>
+                        <a href="https://www.synology.com/en-uk/releaseNote/DSM?model=DS1817%2B" target="_blank" class="link-pill">DSM Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>DrayTek</h4>
+                        <a href="https://www.draytek.com/support/product-lifecycle/" target="_blank" class="link-pill">Product Lifecycle</a>
+                        <a href="https://www.draytek.co.uk/information/eol-product-equivalents" target="_blank" class="link-pill">EOL Equivalents</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>FortiGate</h4>
+                        <a href="https://docs.fortinet.com/document/fortigate/7.6.2/fortios-release-notes/760203/introduction-and-supported-models" target="_blank" class="link-pill">FortiOS Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>WatchGuard</h4>
+                        <a href="https://www.watchguard.com/wgrd-trust-center/end-of-life-policy" target="_blank" class="link-pill">EOL Policy</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Meraki</h4>
+                        <a href="https://documentation.meraki.com/General_Administration/Other_Topics/Meraki_End-of-Life_(EOL)_Products_and_Dates" target="_blank" class="link-pill">EOL Products & Dates</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Juniper</h4>
+                        <a href="https://support.juniper.net/support/eol/" target="_blank" class="link-pill">EOL Information</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Cisco ASA</h4>
+                        <a href="https://www.cisco.com/c/en/us/products/security/asa-5500-series-next-generation-firewalls/eos-eol-notice-listing.html" target="_blank" class="link-pill">ASA EOL Notices</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>BT Hub</h4>
+                        <a href="https://www.bt.com/help/broadband/learn-about-broadband/different-types-of-bt-hub" target="_blank" class="link-pill">Hub Types</a>
+                        <a href="https://img01.products.bt.co.uk/content/dam/bt/storefront/pdfs/terms/bt-product-support-may-2024-issue-3.pdf" target="_blank" class="link-pill">Product Support PDF</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Palo Alto</h4>
+                        <a href="https://www.paloaltonetworks.com/services/support/end-of-life-announcements/hardware-end-of-life-dates" target="_blank" class="link-pill">Hardware EOL Dates</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>ASUS</h4>
+                        <a href="https://www.asus.com/event/network/eol-product/" target="_blank" class="link-pill">EOL Products</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>TP-Link</h4>
+                        <a href="https://www.tp-link.com/fi/support/faq/3562/" target="_blank" class="link-pill">EOL Information</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Datto Networking</h4>
+                        <a href="https://networkinghelp.datto.com/help/Content/kb/Networking/General%20Information/KB370000000038.htm" target="_blank" class="link-pill">Product Lifecycle</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Sophos</h4>
+                        <a href="https://support.sophos.com/support/s/article/KBA-000003353?language=en_US" target="_blank" class="link-pill">EOL Information</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>MikroTik</h4>
+                        <a href="https://www.cloudrouterswitches.com/Mikrotik-EOL.asp" target="_blank" class="link-pill">EOL List</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>ZyXEL</h4>
+                        <a href="https://webservice.zyxel.com/end-of-life" target="_blank" class="link-pill">EOL Information</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>SonicWall</h4>
+                        <a href="https://www.sonicwall.com/support/product-lifecycle-tables/TZ-Series/Hardware" target="_blank" class="link-pill">TZ Series Lifecycle</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Netgate</h4>
+                        <a href="https://www.netgate.com/support/product-lifecycle" target="_blank" class="link-pill">Product Lifecycle</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>VeloCloud</h4>
+                        <a href="https://knowledge.broadcom.com/external/article/312383/product-lifecycle-updates-velocloud-edge.html" target="_blank" class="link-pill">Lifecycle Updates</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AWS -->
+            <div class="link-category" data-category="aws">
+                <div class="lcat-header" onclick="toggleCategory(this)">
+                    <span class="lcat-icon">☁️</span>
+                    <span>AWS Linux</span>
+                    <span class="lcat-chevron">▾</span>
+                </div>
+                <div class="lcat-body">
+                    <div class="vendor-card">
+                        <h4>Amazon Linux 2</h4>
+                        <a href="https://docs.aws.amazon.com/AL2/latest/relnotes/relnotes-al2.html" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Amazon Linux 2023</h4>
+                        <a href="https://docs.aws.amazon.com/linux/al2023/release-notes/relnotes.html" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SOFTWARE SUPPORT -->
+            <div class="link-category" data-category="software">
+                <div class="lcat-header" onclick="toggleCategory(this)">
+                    <span class="lcat-icon">📦</span>
+                    <span>Software Support</span>
+                    <span class="lcat-chevron">▾</span>
+                </div>
+                <div class="lcat-body">
+                    <div class="vendor-card">
+                        <h4>Microsoft EOS 2025</h4>
+                        <a href="https://learn.microsoft.com/en-us/lifecycle/end-of-support/end-of-support-2025" target="_blank" class="link-pill">Out of Support in 2025</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Microsoft EOS 2026</h4>
+                        <a href="https://learn.microsoft.com/en-us/lifecycle/end-of-support/end-of-support-2026" target="_blank" class="link-pill">Out of Support in 2026</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>Node.js</h4>
+                        <a href="https://nodejs.org/en/about/previous-releases" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                    <div class="vendor-card">
+                        <h4>.NET</h4>
+                        <a href="https://versionsof.net/" target="_blank" class="link-pill">Release Notes</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
 
 <script src="versions.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
