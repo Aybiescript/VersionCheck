@@ -1,13 +1,35 @@
-/* ══════════════════════════════════════════════
-   VERSION TIME MACHINE — App Logic
-══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
+   VERSION TIME MACHINE — App Logic  v2.0
+   Dynamic sidebar + EndOfLife.date API + Time Machine
+══════════════════════════════════════════════════════════════════════ */
 
-/* ── THEME TOGGLE ───────────────────────────── */
+'use strict';
+
+/* ── CONSTANTS ──────────────────────────────────────────────────────── */
+const API_BASE      = 'https://endoflife.date/api';
+const ALL_PRODUCTS  = `${API_BASE}/all.json`;
+const LS_CACHE_KEY  = 'vtm_releases_cache';
+const LS_TIME_KEY   = 'vtm_last_updated';
+const LS_LIST_KEY   = 'vtm_product_list';
+const SAFE_DAYS     = 14;           // safe buffer in days
+const WARN_EOL_DAYS = 90;           // < 90 days to EOL = orange warning
+
+/* ── STATE ──────────────────────────────────────────────────────────── */
+let allProductSlugs  = [];          // ['chrome','edge','firefox', …]
+let selectedProduct  = null;        // { slug, name, cycles[] } | null
+let fetchController  = null;        // AbortController for in-flight fetches
+let sidebarOpen      = false;
+
+// `releases` is defined in versions.js as the fallback/seed data.
+// We extend it dynamically as products are loaded.
+
+/* ══════════════════════════════════════════════════════════════════════
+   THEME TOGGLE
+══════════════════════════════════════════════════════════════════════ */
 const Theme = (() => {
     const html   = document.documentElement;
     const btn    = document.getElementById('themeToggle');
     const KEY    = 'vtm-theme';
-
     const ICONS  = { dark: '☀️', light: '🌙' };
     const LABELS = { dark: 'Switch to light mode', light: 'Switch to dark mode' };
 
@@ -18,30 +40,21 @@ const Theme = (() => {
         btn.title = LABELS[mode];
         localStorage.setItem(KEY, mode);
     }
-
-    function toggle() {
-        apply(html.classList.contains('light') ? 'dark' : 'light');
-    }
-
-    // Init: respect saved preference, then OS preference
+    function toggle() { apply(html.classList.contains('light') ? 'dark' : 'light'); }
     function init() {
         const saved = localStorage.getItem(KEY);
-        if (saved) {
-            apply(saved);
-        } else if (window.matchMedia?.('(prefers-color-scheme: light)').matches) {
-            apply('light');
-        } else {
-            apply('dark'); // explicit call so icon is set correctly
-        }
+        if (saved) { apply(saved); }
+        else if (window.matchMedia?.('(prefers-color-scheme: light)').matches) { apply('light'); }
+        else { apply('dark'); }
     }
-
     btn.addEventListener('click', toggle);
     return { init };
 })();
 
-
-/* ── SPA NAVIGATION ─────────────────────────── */
-const App = (() => {
+/* ══════════════════════════════════════════════════════════════════════
+   SPA NAVIGATION
+══════════════════════════════════════════════════════════════════════ */
+const AppNav = (() => {
     const views   = document.querySelectorAll('.view');
     const navTabs = document.querySelectorAll('.nav-tab');
 
@@ -49,31 +62,53 @@ const App = (() => {
         views.forEach(v   => v.classList.toggle('active', v.id === `view-${viewId}`));
         navTabs.forEach(t => t.classList.toggle('active', t.dataset.view === viewId));
     }
-
     navTabs.forEach(tab => tab.addEventListener('click', () => show(tab.dataset.view)));
     return { show };
 })();
 
-window.showView = App.show;
+window.showView = AppNav.show;
 
+/* ══════════════════════════════════════════════════════════════════════
+   SIDEBAR TOGGLE (hamburger / mobile)
+══════════════════════════════════════════════════════════════════════ */
+const sidebar        = document.getElementById('sidebar');
+const hamburger      = document.getElementById('hamburger');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-/* ── SECTION TOGGLE ─────────────────────────── */
+function openSidebar() {
+    sidebarOpen = true;
+    sidebar.classList.add('open');
+    hamburger.classList.add('active');
+    sidebarOverlay.classList.add('visible');
+}
+function closeSidebar() {
+    sidebarOpen = false;
+    sidebar.classList.remove('open');
+    hamburger.classList.remove('active');
+    sidebarOverlay.classList.remove('visible');
+}
+function toggleSidebar() { sidebarOpen ? closeSidebar() : openSidebar(); }
+
+hamburger.addEventListener('click', toggleSidebar);
+sidebarOverlay.addEventListener('click', closeSidebar);
+
+/* ══════════════════════════════════════════════════════════════════════
+   SECTION & CATEGORY TOGGLES
+══════════════════════════════════════════════════════════════════════ */
 function toggleSection(header) {
     const body = header.nextElementSibling;
     header.classList.toggle('open');
     body.classList.toggle('open');
 }
-
-
-/* ── LINK CATEGORY TOGGLE ────────────────────── */
 function toggleCategory(header) {
     const body = header.nextElementSibling;
     header.classList.toggle('open');
     body.classList.toggle('open');
 }
 
-
-/* ── VENDOR LINK FILTER ──────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   VENDOR LINK FILTER
+══════════════════════════════════════════════════════════════════════ */
 function filterLinks(query) {
     const q = query.trim().toLowerCase();
     document.querySelectorAll('.link-category').forEach(cat => {
@@ -87,41 +122,78 @@ function filterLinks(query) {
     });
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   API STATUS INDICATOR
+══════════════════════════════════════════════════════════════════════ */
+function setApiStatus(state, label) {
+    const el  = document.getElementById('apiStatus');
+    const lbl = document.getElementById('apiLabel');
+    el.className  = `api-status ${state}`;
+    lbl.textContent = label;
+}
 
-/* ── GROUP ICONS ─────────────────────────────── */
-const GROUP_ICONS = {
-    browsers: '🌏',
-    macos:    '💻',
-    ios:      '📱',
-    ipados:   '🍎',
-    esxi:     '🖥',
-    m365:     '📊',
-    dotnet:   '⚙️',
-};
-
-
-/* ── DATE FORMATTER ─────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   DATE FORMATTER
+══════════════════════════════════════════════════════════════════════ */
 function formatDate(dateStr) {
     if (!dateStr || dateStr === '—') return '—';
     const d   = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
     const day = d.getUTCDate();
-    const mn  = ["January","February","March","April","May","June",
-                 "July","August","September","October","November","December"];
+    const mn  = ['January','February','March','April','May','June',
+                 'July','August','September','October','November','December'];
     const sfx = n => {
         if (n > 3 && n < 21) return 'th';
-        return ['th','st','nd','rd','th','th','th','th','th','th'][n % 10] ?? 'th';
+        return (['th','st','nd','rd','th','th','th','th','th','th'][n % 10]) ?? 'th';
     };
     return `${day}${sfx(day)} ${mn[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
+function relativeTime(isoDate) {
+    if (!isoDate) return '';
+    const now  = new Date();
+    const then = new Date(isoDate);
+    const days = Math.round((then - now) / 86400000);
+    if (days > 365)  return `in ~${Math.round(days/365)}y`;
+    if (days > 30)   return `in ~${Math.round(days/30)}mo`;
+    if (days > 0)    return `in ${days}d`;
+    if (days === 0)  return 'today';
+    if (days > -30)  return `${-days}d ago`;
+    if (days > -365) return `~${Math.round(-days/30)}mo ago`;
+    return `~${Math.round(-days/365)}y ago`;
+}
 
-/* ── RENDER ONE VERSION CARD ─────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   CORE LOGIC: getSafeLatest
+══════════════════════════════════════════════════════════════════════ */
+function getSafeLatest(list, targetDate) {
+    if (!list || !list.length) return { safe: { v: 'Not released yet' }, fresh: null };
+    const target    = new Date(targetDate);
+    const available = list.filter(r => new Date(r.d) <= target);
+    if (!available.length) return { safe: { v: 'Not released yet' }, fresh: null };
+
+    const safeVersion = available.find(r => {
+        const days = (target - new Date(r.d)) / 86400000;
+        return days >= SAFE_DAYS;
+    });
+    const latest     = available[0];
+    const latestDays = Math.floor((target - new Date(latest.d)) / 86400000);
+    return { safe: safeVersion || latest, fresh: latestDays < SAFE_DAYS ? latest : null, latestDays };
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   RENDER ONE VERSION CARD (existing grouped view)
+══════════════════════════════════════════════════════════════════════ */
+const GROUP_ICONS = {
+    browsers: '🌏', macos: '💻', ios: '📱', ipados: '🍎',
+    esxi: '🖥', m365: '📊', dotnet: '⚙️',
+};
+
 function renderCard(platform, data, selectedDate) {
     const { safe, fresh, latestDays } = data;
     const card = document.createElement('div');
     card.className = 'card';
 
-    // Check if this platform is EOL as of the selected date
     const isEol = platform.eol && new Date(selectedDate) >= new Date(platform.eol);
     if (isEol) card.classList.add('card--eol');
 
@@ -134,8 +206,6 @@ function renderCard(platform, data, selectedDate) {
             </div>`;
         return card;
     }
-
-    const isFuture = platform.key.includes('26');
 
     if (isEol) {
         card.innerHTML = `
@@ -150,6 +220,7 @@ function renderCard(platform, data, selectedDate) {
         return card;
     }
 
+    const isFuture = platform.key && platform.key.includes('26');
     card.innerHTML = `
         <div class="card-name">${platform.name}</div>
         <div class="card-version-block">
@@ -167,12 +238,10 @@ function renderCard(platform, data, selectedDate) {
     return card;
 }
 
-
-/* ── MAIN: CHECK VERSIONS ────────────────────── */
-window.checkVersions = function () {
-    const input = document.getElementById('dateInput').value;
-    if (!input) { alert('Please pick a date first!'); return; }
-
+/* ══════════════════════════════════════════════════════════════════════
+   RENDER GROUPED DEFAULT VIEW
+══════════════════════════════════════════════════════════════════════ */
+function renderGroupedView(targetDate) {
     const container = document.getElementById('results');
     container.innerHTML = '';
 
@@ -180,26 +249,27 @@ window.checkVersions = function () {
     header.className = 'result-header';
     header.innerHTML = `
         <div class="result-date-pill">
-            <span>📅</span> Safe versions as of ${formatDate(input)}
+            <span>📅</span> Safe versions as of ${formatDate(targetDate)}
         </div>`;
     container.appendChild(header);
 
+    const LABELS = {
+        browsers: 'Safe browser versions on',
+        macos:    'Safe macOS versions on',
+        ios:      'Safe iOS versions on',
+        ipados:   'Safe iPadOS versions on',
+        esxi:     'Safe VMware ESXi versions on',
+        m365:     'Safe Microsoft 365 versions on',
+        dotnet:   'Safe .NET versions on',
+    };
+
     groups.forEach((group, gi) => {
-        const section = document.createElement('div');
-        section.className = 'section';
-        section.style.animationDelay = `${gi * 60}ms`;
+        const section       = document.createElement('div');
+        section.className   = 'section';
+        section.style.animationDelay = `${gi * 55}ms`;
 
         const sectionHeader = document.createElement('div');
         sectionHeader.className = 'section-header';
-        const LABELS = {
-            browsers: 'Safe browser versions on',
-            macos:    'Safe macOS versions on',
-            ios:      'Safe iOS versions on',
-            ipados:   'Safe iPadOS versions on',
-            esxi:     'Safe VMware ESXi versions on',
-            m365:     'Safe Microsoft 365 versions on',
-            dotnet:   'Safe .NET versions on',
-        };
         const dateLabel = LABELS[group.id] ?? 'Safe versions on';
 
         sectionHeader.innerHTML = `
@@ -207,7 +277,7 @@ window.checkVersions = function () {
                 <span class="section-icon">${GROUP_ICONS[group.id] ?? '📦'}</span>
                 <div class="section-header-text">
                     <span class="section-title">${group.title}</span>
-                    <span class="section-date-label">${dateLabel} ${formatDate(input)}</span>
+                    <span class="section-date-label">${dateLabel} ${formatDate(targetDate)}</span>
                 </div>
                 <span class="section-count">${group.platforms.length}</span>
             </div>
@@ -218,10 +288,10 @@ window.checkVersions = function () {
         sectionBody.className = 'section-body';
 
         group.platforms.forEach((platform, pi) => {
-            const data = getSafeLatest(releases[platform.key], input);
-            const card = renderCard(platform, data, input);
+            const data = getSafeLatest(releases[platform.key], targetDate);
+            const card = renderCard(platform, data, targetDate);
             sectionBody.appendChild(card);
-            setTimeout(() => card.classList.add('show'), gi * 60 + pi * 80);
+            setTimeout(() => card.classList.add('show'), gi * 55 + pi * 75);
         });
 
         section.appendChild(sectionHeader);
@@ -233,19 +303,568 @@ window.checkVersions = function () {
             sectionBody.classList.add('open');
         }
     });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   RENDER SINGLE DYNAMIC PRODUCT VIEW
+══════════════════════════════════════════════════════════════════════ */
+function renderProductView(slug, cycles, targetDate) {
+    const container = document.getElementById('results');
+    container.innerHTML = '';
+
+    if (!cycles || cycles.length === 0) {
+        container.innerHTML = `
+            <div class="results-error">
+                <div class="results-error-icon">📭</div>
+                <div>No release data found for <strong>${slug}</strong>.</div>
+            </div>`;
+        return;
+    }
+
+    // Determine overall EOL status from cycles
+    const today      = new Date().toISOString().slice(0, 10);
+    const eolCycles  = cycles.filter(c => c.eol && c.eol !== false && c.eol < today);
+    const activeCyc  = cycles.filter(c => !c.eol || c.eol === false || c.eol >= today);
+    const nearEol    = activeCyc.filter(c => {
+        if (!c.eol || c.eol === false) return false;
+        const daysLeft = (new Date(c.eol) - new Date()) / 86400000;
+        return daysLeft < WARN_EOL_DAYS;
+    });
+
+    // Convert to releases format and determine safe version for date
+    const releaseList = cycles
+        .flatMap(c => {
+            // Each cycle may have a latestReleaseDate or releaseDate
+            const d = c.latestReleaseDate || c.releaseDate;
+            const v = c.latest || c.cycle;
+            if (!d || !v) return [];
+            return [{ v: String(v), d: String(d), eol: c.eol, lts: c.lts }];
+        })
+        .sort((a, b) => b.d.localeCompare(a.d));
+
+    // Cache into releases
+    releases[slug] = releaseList.map(r => ({ v: r.v, d: r.d }));
+
+    const safeResult = getSafeLatest(releaseList, targetDate);
+
+    // ── Header ──
+    const header    = document.createElement('div');
+    header.className = 'result-header';
+
+    const displayName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+    let statusBadge = '';
+    if (activeCyc.length === 0) {
+        statusBadge = `<span class="product-badge product-badge--eol">⛔ All cycles EOL</span>`;
+    } else if (nearEol.length > 0) {
+        statusBadge = `<span class="product-badge product-badge--warn">⚠ ${nearEol.length} cycle${nearEol.length > 1 ? 's' : ''} near EOL</span>`;
+    } else {
+        statusBadge = `<span class="product-badge product-badge--supported">✓ Actively supported</span>`;
+    }
+
+    header.innerHTML = `
+        <div class="product-view-header">
+            <div>
+                <div class="product-view-title">${displayName}</div>
+                <div class="product-view-meta">
+                    ${statusBadge}
+                    <span class="product-badge product-badge--info">${cycles.length} cycles tracked</span>
+                    <span class="product-badge product-badge--info">As of ${formatDate(targetDate)}</span>
+                </div>
+            </div>
+            <div class="result-date-pill"><span>📅</span> ${formatDate(targetDate)}</div>
+        </div>`;
+    container.appendChild(header);
+
+    // ── Safe version highlight card ──
+    if (safeResult.safe && safeResult.safe.v !== 'Not released yet') {
+        const highlight = document.createElement('div');
+        highlight.className = 'section';
+        highlight.style.animationDelay = '0ms';
+
+        const isFresh = safeResult.fresh !== null;
+        highlight.innerHTML = `
+            <div class="section-header open" style="cursor:default">
+                <div class="section-header-left">
+                    <span class="section-icon">✅</span>
+                    <div class="section-header-text">
+                        <span class="section-title">Safe version on ${formatDate(targetDate)}</span>
+                        <span class="section-date-label">14-day buffer applied</span>
+                    </div>
+                </div>
+            </div>
+            <div class="section-body open" style="grid-template-columns: 1fr">
+                <div class="card show" style="opacity:1;transform:none">
+                    <div class="card-name">${displayName}</div>
+                    <div class="card-version-block">
+                        <div class="card-version-label">✓ Latest safe version</div>
+                        <div class="card-version-number">${safeResult.safe.v}</div>
+                        <div class="card-version-date">Released ${formatDate(safeResult.safe.d)}</div>
+                    </div>
+                    ${isFresh ? `
+                    <div class="card-fresh-note">
+                        ⚠ Newer version <strong>${safeResult.fresh.v}</strong> (${formatDate(safeResult.fresh.d)}) was only
+                        ${safeResult.latestDays} day${safeResult.latestDays !== 1 ? 's' : ''} old — too fresh to be safe
+                    </div>` : ''}
+                </div>
+            </div>`;
+        container.appendChild(highlight);
+    } else {
+        const msg = document.createElement('div');
+        msg.className = 'results-error';
+        msg.innerHTML = `<div>No releases for <strong>${displayName}</strong> were available on ${formatDate(targetDate)}.</div>`;
+        container.appendChild(msg);
+    }
+
+    // ── Full release history table ──
+    const tableSection = document.createElement('div');
+    tableSection.className = 'section';
+    tableSection.style.animationDelay = '120ms';
+
+    const tableHeader = document.createElement('div');
+    tableHeader.className = 'section-header';
+    tableHeader.innerHTML = `
+        <div class="section-header-left">
+            <span class="section-icon">📋</span>
+            <div class="section-header-text">
+                <span class="section-title">Full Release History</span>
+                <span class="section-date-label">${releaseList.length} releases</span>
+            </div>
+        </div>
+        <span class="section-chevron">▾</span>`;
+    tableHeader.addEventListener('click', () => toggleSection(tableHeader));
+
+    const tableBody = document.createElement('div');
+    tableBody.className = 'section-body open';
+    tableBody.style.gridTemplateColumns = '1fr';
+    tableBody.style.maxHeight = '4000px';
+    tableBody.style.opacity   = '1';
+    tableBody.style.padding   = '12px';
+
+    const tableWrap = document.createElement('div');
+    tableWrap.className = 'release-table-wrap';
+
+    const safeV = safeResult.safe?.v;
+    const freshV = safeResult.fresh?.v;
+
+    const rows = cycles.map(cycle => {
+        const v   = cycle.latest || cycle.cycle;
+        const d   = cycle.latestReleaseDate || cycle.releaseDate;
+        const eol = cycle.eol;
+        if (!v || !d) return '';
+
+        const releaseDate = new Date(d);
+        const targetD     = new Date(targetDate);
+        const daysOld     = Math.floor((targetD - releaseDate) / 86400000);
+        const isAvailable = releaseDate <= targetD;
+
+        let badge = '';
+        let rowClass = '';
+        if (!isAvailable) {
+            badge = `<span class="release-row-badge badge-future">Future</span>`;
+        } else if (String(v) === String(safeV)) {
+            badge = `<span class="release-row-badge badge-safe">✓ Safe</span>`;
+            rowClass = 'safe-row';
+        } else if (String(v) === String(freshV)) {
+            badge = `<span class="release-row-badge badge-fresh">Too fresh</span>`;
+        } else if (daysOld >= 0) {
+            badge = `<span class="release-row-badge badge-older">Older</span>`;
+        }
+
+        let eolCell = '—';
+        let eolClass = '';
+        if (eol && eol !== false) {
+            const daysLeft = Math.floor((new Date(eol) - new Date()) / 86400000);
+            if (daysLeft < 0) {
+                eolCell  = `<span style="color:var(--eol-red)">${formatDate(String(eol))}</span>`;
+                eolClass = 'style="color:var(--eol-red)"';
+            } else if (daysLeft < WARN_EOL_DAYS) {
+                eolCell  = `<span style="color:var(--warn)">${formatDate(String(eol))} (${relativeTime(String(eol))})</span>`;
+            } else {
+                eolCell  = `${formatDate(String(eol))} <span style="color:var(--ink-3);font-size:0.75em">(${relativeTime(String(eol))})</span>`;
+            }
+        } else if (eol === false) {
+            eolCell = `<span style="color:var(--safe)">Active</span>`;
+        }
+
+        const ltsCell = cycle.lts
+            ? `<span style="color:var(--safe);font-size:0.7rem;font-family:var(--font-mono)">LTS</span>`
+            : '';
+
+        return `
+            <tr class="${rowClass}">
+                <td><span class="version-mono">${v}</span> ${ltsCell}</td>
+                <td>${formatDate(d)}</td>
+                <td>${eolCell}</td>
+                <td>${isAvailable ? badge : badge}</td>
+            </tr>`;
+    }).join('');
+
+    tableWrap.innerHTML = `
+        <table class="release-table">
+            <thead>
+                <tr>
+                    <th>Version / Cycle</th>
+                    <th>Release Date</th>
+                    <th>End of Life</th>
+                    <th>Status on ${formatDate(targetDate)}</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+
+    tableBody.appendChild(tableWrap);
+    tableHeader.classList.add('open');
+    tableSection.appendChild(tableHeader);
+    tableSection.appendChild(tableBody);
+    container.appendChild(tableSection);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MAIN: checkVersions()  — called by button + on page load
+══════════════════════════════════════════════════════════════════════ */
+window.checkVersions = function () {
+    const input = document.getElementById('dateInput').value;
+    if (!input) { alert('Please pick a date first!'); return; }
+
+    if (selectedProduct) {
+        // Fetch or use cached product data
+        fetchAndRenderProduct(selectedProduct.slug, input);
+    } else {
+        renderGroupedView(input);
+    }
 };
 
+/* ══════════════════════════════════════════════════════════════════════
+   SELECTED PRODUCT  —  sidebar click → set → render
+══════════════════════════════════════════════════════════════════════ */
+function selectProduct(slug, name) {
+    selectedProduct = { slug, name };
 
-/* ── INIT ───────────────────────────────────── */
+    // Update sidebar active state
+    document.querySelectorAll('.sidebar-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.slug === slug);
+    });
+
+    // Update active product bar in hero
+    const bar  = document.getElementById('activeProductBar');
+    const lbl  = document.getElementById('activeProductName');
+    bar.style.display = 'inline-flex';
+    lbl.textContent   = name || slug.replace(/-/g, ' ');
+
+    // Navigate to home view and run
+    AppNav.show('home');
+    window.checkVersions();
+
+    // Close sidebar on mobile
+    if (window.innerWidth < 900) closeSidebar();
+}
+
+window.clearSelectedProduct = function () {
+    selectedProduct = null;
+    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+    document.getElementById('activeProductBar').style.display = 'none';
+    window.checkVersions();
+};
+
+/* ══════════════════════════════════════════════════════════════════════
+   FETCH PRODUCT RELEASE DATA
+══════════════════════════════════════════════════════════════════════ */
+async function fetchProductCycles(slug) {
+    // Check memory cache first
+    if (releases[slug] && releases[slug]._raw) {
+        return releases[slug]._raw;
+    }
+    // Check localStorage cache
+    try {
+        const cached = JSON.parse(localStorage.getItem(LS_CACHE_KEY) || '{}');
+        if (cached[slug]) {
+            releases[slug] = cached[slug].list;
+            releases[slug]._raw = cached[slug].raw;
+            return cached[slug].raw;
+        }
+    } catch (_) { /* ignore */ }
+
+    const res    = await fetch(`${API_BASE}/${slug}.json`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const cycles = await res.json();
+
+    // Persist to localStorage
+    try {
+        const cached    = JSON.parse(localStorage.getItem(LS_CACHE_KEY) || '{}');
+        cached[slug]    = { raw: cycles, list: normalizeCycles(cycles), ts: Date.now() };
+        localStorage.setItem(LS_CACHE_KEY, JSON.stringify(cached));
+    } catch (_) { /* quota exceeded — ignore */ }
+
+    return cycles;
+}
+
+function normalizeCycles(cycles) {
+    return cycles
+        .map(c => {
+            const d = c.latestReleaseDate || c.releaseDate;
+            const v = c.latest || c.cycle;
+            if (!d || !v) return null;
+            return { v: String(v), d: String(d) };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.d.localeCompare(a.d));
+}
+
+async function fetchAndRenderProduct(slug, targetDate) {
+    const container = document.getElementById('results');
+    container.innerHTML = `
+        <div class="results-loading">
+            <div class="spinner"></div>
+            <span>Loading data for <strong>${slug}</strong>…</span>
+        </div>`;
+
+    try {
+        const cycles = await fetchProductCycles(slug);
+        renderProductView(slug, cycles, targetDate);
+    } catch (e) {
+        // Fallback to cached releases object if it has data
+        if (releases[slug] && releases[slug].length) {
+            renderGroupedView(targetDate); // graceful fallback
+        } else {
+            container.innerHTML = `
+                <div class="results-error">
+                    <div class="results-error-icon">🔌</div>
+                    <div>Could not load data for <strong>${slug}</strong>.<br>
+                    <small>${e.message}</small></div>
+                </div>`;
+        }
+        setApiStatus('err', 'API error');
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   FETCH ALL PRODUCTS  (sidebar population)
+══════════════════════════════════════════════════════════════════════ */
+async function fetchAllProducts(force = false) {
+    const refreshBtn = document.getElementById('sidebarRefresh');
+    const refreshIcon = document.getElementById('refreshIcon');
+    refreshBtn.classList.add('spinning');
+    setApiStatus('', 'Fetching…');
+
+    try {
+        // Try localStorage first unless forced
+        if (!force) {
+            const cachedList = localStorage.getItem(LS_LIST_KEY);
+            if (cachedList) {
+                allProductSlugs = JSON.parse(cachedList);
+                populateSidebar(allProductSlugs);
+                updateLastUpdatedLabel();
+                setApiStatus('ok', `${allProductSlugs.length} products`);
+                refreshBtn.classList.remove('spinning');
+                return;
+            }
+        }
+
+        const res  = await fetch(ALL_PRODUCTS);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        allProductSlugs = await res.json(); // array of slug strings
+
+        localStorage.setItem(LS_LIST_KEY, JSON.stringify(allProductSlugs));
+        localStorage.setItem(LS_TIME_KEY, new Date().toISOString());
+
+        if (force) {
+            // Clear product cache on full refresh
+            localStorage.removeItem(LS_CACHE_KEY);
+        }
+
+        populateSidebar(allProductSlugs);
+        updateLastUpdatedLabel();
+        setApiStatus('ok', `${allProductSlugs.length} products`);
+
+    } catch (e) {
+        setApiStatus('err', 'Offline / API down');
+        document.getElementById('sidebarLoading').innerHTML = `
+            <div style="color:var(--eol-red);font-size:1.5rem">🔌</div>
+            <span style="color:var(--eol-red)">Cannot reach EndOfLife.date<br><small>Showing local data only</small></span>`;
+
+        // Populate sidebar with what we know from versions.js
+        const fallbackSlugs = ['chrome','edge','firefox','ios','macos','dotnet'];
+        populateSidebar(fallbackSlugs);
+    } finally {
+        refreshBtn.classList.remove('spinning');
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   POPULATE SIDEBAR
+══════════════════════════════════════════════════════════════════════ */
+function populateSidebar(slugs) {
+    const list = document.getElementById('sidebarList');
+    list.innerHTML = '';
+
+    document.getElementById('productCount').textContent = slugs.length;
+
+    // Build items
+    allSidebarItems = slugs.map(slug => ({
+        slug,
+        name: formatSlugName(slug),
+        el: null,
+    }));
+
+    // Alphabetical group by first letter
+    const grouped = {};
+    allSidebarItems.forEach(item => {
+        const letter = item.name[0].toUpperCase();
+        if (!grouped[letter]) grouped[letter] = [];
+        grouped[letter].push(item);
+    });
+
+    Object.keys(grouped).sort().forEach(letter => {
+        const groupLabel      = document.createElement('div');
+        groupLabel.className  = 'sidebar-group-label';
+        groupLabel.textContent = letter;
+        list.appendChild(groupLabel);
+
+        grouped[letter].forEach(item => {
+            const el = document.createElement('div');
+            el.className   = 'sidebar-item';
+            el.dataset.slug = item.slug;
+            el.dataset.name = item.name.toLowerCase();
+
+            // EOL dot — basic heuristic from cached data
+            const dot = makeDot(item.slug);
+
+            el.innerHTML = `
+                <div class="sidebar-eol-dot ${dot}"></div>
+                <span class="sidebar-item-name">${item.name}</span>
+            `;
+            el.addEventListener('click', () => selectProduct(item.slug, item.name));
+
+            item.el = el;
+            list.appendChild(el);
+        });
+    });
+}
+
+let allSidebarItems = [];
+
+function makeDot(slug) {
+    // Check if we have data for this product in the releases cache
+    const data = releases[slug];
+    if (!data || !data.length) return 'eol-dot--grey';
+
+    const latest = data[0];
+    if (!latest) return 'eol-dot--grey';
+    // Green if recent release (within 2 years)
+    const daysOld = (new Date() - new Date(latest.d)) / 86400000;
+    if (daysOld < 730) return 'eol-dot--green';
+    if (daysOld < 1460) return 'eol-dot--orange';
+    return 'eol-dot--red';
+}
+
+function formatSlugName(slug) {
+    // Convert slug to readable name
+    return slug
+        .replace(/-/g, ' ')
+        .replace(/\b(\w)/g, l => l.toUpperCase())
+        .replace(/\bAmazon\b/, 'Amazon')
+        .replace(/\bLts\b/, 'LTS')
+        .replace(/\bVmware\b/, 'VMware')
+        .replace(/\bIos\b/, 'iOS')
+        .replace(/\bMacos\b/, 'macOS')
+        .replace(/\bDotnet\b/, '.NET');
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIDEBAR SEARCH FILTER
+══════════════════════════════════════════════════════════════════════ */
+const sidebarSearch = document.getElementById('sidebarSearch');
+const searchClear   = document.getElementById('searchClear');
+
+sidebarSearch.addEventListener('input', () => {
+    const q = sidebarSearch.value.trim().toLowerCase();
+    searchClear.classList.toggle('visible', q.length > 0);
+    filterSidebar(q);
+});
+
+searchClear.addEventListener('click', () => {
+    sidebarSearch.value = '';
+    searchClear.classList.remove('visible');
+    filterSidebar('');
+});
+
+function filterSidebar(q) {
+    const list = document.getElementById('sidebarList');
+    let visibleCount = 0;
+
+    // Show/hide items and labels
+    let lastLabel = null;
+    let labelHasVisible = false;
+
+    Array.from(list.children).forEach(el => {
+        if (el.classList.contains('sidebar-group-label')) {
+            if (lastLabel && !labelHasVisible) lastLabel.style.display = 'none';
+            lastLabel = el;
+            labelHasVisible = false;
+            el.style.display = '';
+        } else if (el.classList.contains('sidebar-item')) {
+            const name = el.dataset.name || '';
+            const slug = el.dataset.slug || '';
+            const match = !q || name.includes(q) || slug.includes(q);
+            el.style.display = match ? '' : 'none';
+            if (match) { visibleCount++; labelHasVisible = true; }
+        }
+    });
+    if (lastLabel && !labelHasVisible) lastLabel.style.display = 'none';
+
+    // No results message
+    let noResults = list.querySelector('.sidebar-no-results');
+    if (q && visibleCount === 0) {
+        if (!noResults) {
+            noResults = document.createElement('div');
+            noResults.className = 'sidebar-no-results';
+            list.appendChild(noResults);
+        }
+        noResults.textContent = `No products matching "${q}"`;
+    } else if (noResults) {
+        noResults.remove();
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   REFRESH BUTTON
+══════════════════════════════════════════════════════════════════════ */
+document.getElementById('sidebarRefresh').addEventListener('click', () => {
+    fetchAllProducts(true);
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   LAST UPDATED LABEL
+══════════════════════════════════════════════════════════════════════ */
+function updateLastUpdatedLabel() {
+    const ts = localStorage.getItem(LS_TIME_KEY);
+    if (!ts) return;
+    const d = new Date(ts);
+    document.getElementById('lastUpdated').textContent =
+        `Updated ${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════════════ */
 window.addEventListener('load', () => {
     Theme.init();
 
-    // Open all link categories
+    // Open all link categories by default
     document.querySelectorAll('.lcat-header').forEach(h => {
         h.classList.add('open');
         h.nextElementSibling.classList.add('open');
     });
 
-    document.getElementById('dateInput').value = '2026-04-01';
-    checkVersions();
+    // Default date
+    document.getElementById('dateInput').value = new Date().toISOString().slice(0, 10);
+
+    // Render default grouped view immediately with static data
+    renderGroupedView(document.getElementById('dateInput').value);
+
+    // Then load API data for sidebar (non-blocking)
+    fetchAllProducts(false);
+
+    updateLastUpdatedLabel();
 });
