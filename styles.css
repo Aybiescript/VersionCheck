@@ -1229,6 +1229,84 @@ html.light .card-eol-date { color: #b91c1c; }
     scrollbar-color: var(--border-hi) transparent;
 }
 
+/* ══ RESULTS SEARCH BAR (multi-cycle product view) ══════════════════════ */
+.results-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    flex-wrap: wrap;
+    transition: background-color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+
+.results-search-inner {
+    position: relative;
+    flex: 1;
+    min-width: 160px;
+}
+
+.results-search-icon {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-3);
+    pointer-events: none;
+    flex-shrink: 0;
+}
+
+.results-search-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 30px 8px 32px;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s var(--ease), background-color 0.3s var(--ease);
+}
+.results-search-input::placeholder { color: var(--ink-3); }
+.results-search-input:focus { border-color: var(--accent); }
+
+.results-search-clear {
+    position: absolute;
+    right: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--ink-3);
+    font-size: 0.72rem;
+    cursor: pointer;
+    padding: 3px 5px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+}
+.results-search-clear:hover { background: var(--surface-2); color: var(--ink); }
+
+.results-search-count {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--ink-3);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.results-search-noresults {
+    grid-column: 1 / -1;   /* span full card grid width */
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--ink-3);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
 /* ══ RESPONSIVE ═════════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
     .sidebar {
