@@ -307,6 +307,9 @@ function renderGroupedView(targetDate) {
 
 /* ══════════════════════════════════════════════════════════════════════
    RENDER SINGLE DYNAMIC PRODUCT VIEW
+   Shows one card per major version cycle, identical to the grouped home
+   view.  Each cycle's releases are evaluated with getSafeLatest()
+   independently, so EOL status per-cycle is fully respected.
 ══════════════════════════════════════════════════════════════════════ */
 function renderProductView(slug, cycles, targetDate) {
     const container = document.getElementById('results');
@@ -321,37 +324,61 @@ function renderProductView(slug, cycles, targetDate) {
         return;
     }
 
-    // Determine overall EOL status from cycles
-    const today      = new Date().toISOString().slice(0, 10);
-    const eolCycles  = cycles.filter(c => c.eol && c.eol !== false && c.eol < today);
-    const activeCyc  = cycles.filter(c => !c.eol || c.eol === false || c.eol >= today);
-    const nearEol    = activeCyc.filter(c => {
-        if (!c.eol || c.eol === false) return false;
-        const daysLeft = (new Date(c.eol) - new Date()) / 86400000;
-        return daysLeft < WARN_EOL_DAYS;
+    const today       = new Date().toISOString().slice(0, 10);
+    const targetD     = new Date(targetDate);
+    const displayName = formatSlugName(slug);
+
+    /* ── Step 1: group raw API cycles by their major-version label ──────
+       The `cycle` field IS the major version ("8", "9", "10", "15", …).
+       We collect every patch release that belongs to each cycle so we can
+       run getSafeLatest() on that per-cycle list independently.
+
+       Each entry in `cycles` from the API already represents one cycle
+       (major branch) with its latest patch + releaseDate.  We treat each
+       cycle entry as a single-entry release list for that branch.
+       This mirrors exactly what versions.js does for dotnet_8_releases,
+       dotnet_9_releases, etc.
+    ─────────────────────────────────────────────────────────────────── */
+
+    // Sort cycles by their release date descending (newest cycle first)
+    const sortedCycles = [...cycles].sort((a, b) => {
+        const da = a.latestReleaseDate || a.releaseDate || '';
+        const db = b.latestReleaseDate || b.releaseDate || '';
+        return db.localeCompare(da);
     });
 
-    // Convert to releases format and determine safe version for date
-    const releaseList = cycles
-        .flatMap(c => {
-            // Each cycle may have a latestReleaseDate or releaseDate
+    // Build a per-cycle releases list  { cycle: string, eol, lts, releases: [{v,d}] }
+    // Each cycle contributes exactly one entry: its latest patch release.
+    // That gives getSafeLatest() the correct "newest release in this branch" to test.
+    const cycleGroups = sortedCycles
+        .map(c => {
             const d = c.latestReleaseDate || c.releaseDate;
             const v = c.latest || c.cycle;
-            if (!d || !v) return [];
-            return [{ v: String(v), d: String(d), eol: c.eol, lts: c.lts }];
+            if (!d || !v) return null;
+            return {
+                cycleLabel: String(c.cycle),
+                eol:        c.eol,          // string date, false, or undefined
+                lts:        c.lts || false,
+                releases:   [{ v: String(v), d: String(d) }],
+            };
         })
-        .sort((a, b) => b.d.localeCompare(a.d));
+        .filter(Boolean);
 
-    // Cache into releases
-    releases[slug] = releaseList.map(r => ({ v: r.v, d: r.d }));
+    if (cycleGroups.length === 0) {
+        container.innerHTML = `
+            <div class="results-error">
+                <div class="results-error-icon">📭</div>
+                <div>No usable release data found for <strong>${displayName}</strong>.</div>
+            </div>`;
+        return;
+    }
 
-    const safeResult = getSafeLatest(releaseList, targetDate);
-
-    // ── Header ──
-    const header    = document.createElement('div');
-    header.className = 'result-header';
-
-    const displayName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    /* ── Step 2: overall status badges for the header ─────────────────── */
+    const activeCyc = cycleGroups.filter(g => !g.eol || g.eol === false || String(g.eol) >= today);
+    const nearEol   = activeCyc.filter(g => {
+        if (!g.eol || g.eol === false) return false;
+        return (new Date(g.eol) - new Date()) / 86400000 < WARN_EOL_DAYS;
+    });
 
     let statusBadge = '';
     if (activeCyc.length === 0) {
@@ -362,13 +389,16 @@ function renderProductView(slug, cycles, targetDate) {
         statusBadge = `<span class="product-badge product-badge--supported">✓ Actively supported</span>`;
     }
 
+    /* ── Step 3: render page header ──────────────────────────────────── */
+    const header = document.createElement('div');
+    header.className = 'result-header';
     header.innerHTML = `
         <div class="product-view-header">
             <div>
                 <div class="product-view-title">${displayName}</div>
                 <div class="product-view-meta">
                     ${statusBadge}
-                    <span class="product-badge product-badge--info">${cycles.length} cycles tracked</span>
+                    <span class="product-badge product-badge--info">${cycleGroups.length} cycle${cycleGroups.length !== 1 ? 's' : ''} tracked</span>
                     <span class="product-badge product-badge--info">As of ${formatDate(targetDate)}</span>
                 </div>
             </div>
@@ -376,47 +406,128 @@ function renderProductView(slug, cycles, targetDate) {
         </div>`;
     container.appendChild(header);
 
-    // ── Safe version highlight card ──
-    if (safeResult.safe && safeResult.safe.v !== 'Not released yet') {
-        const highlight = document.createElement('div');
-        highlight.className = 'section';
-        highlight.style.animationDelay = '0ms';
+    /* ── Step 4: one card per cycle ──────────────────────────────────────
+       Determine if this product truly has multiple distinct major versions
+       that need separate cards, or if it's a single-stream product like
+       Chrome where every cycle IS the full product (major number only).
 
-        const isFresh = safeResult.fresh !== null;
-        highlight.innerHTML = `
-            <div class="section-header open" style="cursor:default">
-                <div class="section-header-left">
-                    <span class="section-icon">✅</span>
-                    <div class="section-header-text">
-                        <span class="section-title">Safe version on ${formatDate(targetDate)}</span>
-                        <span class="section-date-label">14-day buffer applied</span>
-                    </div>
-                </div>
-            </div>
-            <div class="section-body open" style="grid-template-columns: 1fr">
-                <div class="card show" style="opacity:1;transform:none">
-                    <div class="card-name">${displayName}</div>
-                    <div class="card-version-block">
-                        <div class="card-version-label">✓ Latest safe version</div>
-                        <div class="card-version-number">${safeResult.safe.v}</div>
-                        <div class="card-version-date">Released ${formatDate(safeResult.safe.d)}</div>
-                    </div>
-                    ${isFresh ? `
-                    <div class="card-fresh-note">
-                        ⚠ Newer version <strong>${safeResult.fresh.v}</strong> (${formatDate(safeResult.fresh.d)}) was only
-                        ${safeResult.latestDays} day${safeResult.latestDays !== 1 ? 's' : ''} old — too fresh to be safe
-                    </div>` : ''}
+       Heuristic: if ALL cycle labels are plain integers (Chrome: "128",
+       "129" …) AND the product has no EOL metadata on individual cycles,
+       we treat the whole thing as a single stream and show one card.
+       Otherwise (dotnet "8"/"9"/"10", macos "13"/"14"/"15", ios "17"/"18")
+       we show one card per cycle.
+    ─────────────────────────────────────────────────────────────────── */
+    const allIntegerCycles  = cycleGroups.every(g => /^\d+$/.test(g.cycleLabel));
+    const anyEolAnnotated   = cycleGroups.some(g => g.eol !== undefined && g.eol !== false);
+    // If cycles are simple integers AND none carry EOL dates, it's a rolling
+    // release (Chrome, Firefox, Edge) — show a single combined card.
+    const isSingleStream    = allIntegerCycles && !anyEolAnnotated;
+
+    if (isSingleStream) {
+        /* Single-stream product: merge all cycles into one release list and
+           show a single card (original behavior for browsers etc.)          */
+        const releaseList = cycleGroups
+            .flatMap(g => g.releases)
+            .sort((a, b) => b.d.localeCompare(a.d));
+
+        releases[slug] = releaseList;
+
+        const safeResult = getSafeLatest(releaseList, targetDate);
+
+        const section = document.createElement('div');
+        section.className = 'section';
+        section.style.animationDelay = '0ms';
+
+        const sectionHeader = document.createElement('div');
+        sectionHeader.className = 'section-header open';
+        sectionHeader.style.cursor = 'default';
+        sectionHeader.innerHTML = `
+            <div class="section-header-left">
+                <span class="section-icon">✅</span>
+                <div class="section-header-text">
+                    <span class="section-title">Safe version on ${formatDate(targetDate)}</span>
+                    <span class="section-date-label">14-day buffer applied</span>
                 </div>
             </div>`;
-        container.appendChild(highlight);
+
+        const sectionBody = document.createElement('div');
+        sectionBody.className = 'section-body open';
+        sectionBody.style.gridTemplateColumns = '1fr';
+
+        const card = _buildSingleCard(
+            displayName,
+            safeResult,
+            null,   /* no EOL date — single-stream products don't have per-card EOL */
+            targetDate,
+            false   /* isFuture */
+        );
+        card.classList.add('show');
+        sectionBody.appendChild(card);
+
+        section.appendChild(sectionHeader);
+        section.appendChild(sectionBody);
+        container.appendChild(section);
+
     } else {
-        const msg = document.createElement('div');
-        msg.className = 'results-error';
-        msg.innerHTML = `<div>No releases for <strong>${displayName}</strong> were available on ${formatDate(targetDate)}.</div>`;
-        container.appendChild(msg);
+        /* Multi-cycle product: one card per cycle (dotnet, macos, ios, etc.) */
+
+        // Build a flat releases cache for the sidebar dot heuristic
+        releases[slug] = cycleGroups
+            .flatMap(g => g.releases)
+            .sort((a, b) => b.d.localeCompare(a.d));
+
+        const section = document.createElement('div');
+        section.className = 'section';
+        section.style.animationDelay = '0ms';
+
+        const sectionHeader = document.createElement('div');
+        sectionHeader.className = 'section-header open';
+        sectionHeader.innerHTML = `
+            <div class="section-header-left">
+                <span class="section-icon">📦</span>
+                <div class="section-header-text">
+                    <span class="section-title">${displayName}</span>
+                    <span class="section-date-label">Safe versions on ${formatDate(targetDate)} · 14-day buffer</span>
+                </div>
+                <span class="section-count">${cycleGroups.length}</span>
+            </div>
+            <span class="section-chevron">▾</span>`;
+        sectionHeader.addEventListener('click', () => toggleSection(sectionHeader));
+
+        const sectionBody = document.createElement('div');
+        sectionBody.className = 'section-body open';
+
+        cycleGroups.forEach((group, idx) => {
+            /* Is this cycle EOL *as of the selected date*?
+               The `eol` field on the API cycle is the date support ended.
+               If targetDate >= eol → EOL on that date.                    */
+            const cycleEolDate  = (group.eol && group.eol !== false) ? String(group.eol) : null;
+            const isEolOnDate   = cycleEolDate && targetD >= new Date(cycleEolDate);
+
+            /* Label for the card: "Product Name cycleLabel" e.g. ".NET 8"   */
+            const cardName = `${displayName} ${group.cycleLabel}${group.lts ? ' LTS' : ''}`;
+
+            /* Run getSafeLatest on this cycle's releases                     */
+            const safeResult = getSafeLatest(group.releases, targetDate);
+
+            const card = _buildSingleCard(
+                cardName,
+                safeResult,
+                cycleEolDate,
+                targetDate,
+                false   /* isFuture — could extend later */
+            );
+
+            setTimeout(() => card.classList.add('show'), idx * 75);
+            sectionBody.appendChild(card);
+        });
+
+        section.appendChild(sectionHeader);
+        section.appendChild(sectionBody);
+        container.appendChild(section);
     }
 
-    // ── Full release history table ──
+    /* ── Step 5: full release history table (always shown below cards) ── */
     const tableSection = document.createElement('div');
     tableSection.className = 'section';
     tableSection.style.animationDelay = '120ms';
@@ -428,7 +539,7 @@ function renderProductView(slug, cycles, targetDate) {
             <span class="section-icon">📋</span>
             <div class="section-header-text">
                 <span class="section-title">Full Release History</span>
-                <span class="section-date-label">${releaseList.length} releases</span>
+                <span class="section-date-label">${sortedCycles.length} cycles</span>
             </div>
         </div>
         <span class="section-chevron">▾</span>`;
@@ -437,51 +548,54 @@ function renderProductView(slug, cycles, targetDate) {
     const tableBody = document.createElement('div');
     tableBody.className = 'section-body open';
     tableBody.style.gridTemplateColumns = '1fr';
-    tableBody.style.maxHeight = '4000px';
+    tableBody.style.maxHeight = '6000px';
     tableBody.style.opacity   = '1';
     tableBody.style.padding   = '12px';
 
     const tableWrap = document.createElement('div');
     tableWrap.className = 'release-table-wrap';
 
-    const safeV = safeResult.safe?.v;
-    const freshV = safeResult.fresh?.v;
-
-    const rows = cycles.map(cycle => {
+    const rows = sortedCycles.map(cycle => {
         const v   = cycle.latest || cycle.cycle;
         const d   = cycle.latestReleaseDate || cycle.releaseDate;
         const eol = cycle.eol;
         if (!v || !d) return '';
 
-        const releaseDate = new Date(d);
-        const targetD     = new Date(targetDate);
-        const daysOld     = Math.floor((targetD - releaseDate) / 86400000);
-        const isAvailable = releaseDate <= targetD;
+        const releaseDate  = new Date(d);
+        const isAvailable  = releaseDate <= targetD;
+        const daysOld      = Math.floor((targetD - releaseDate) / 86400000);
+        const cycleEolDate = (eol && eol !== false) ? String(eol) : null;
+        const isEolOnDate  = cycleEolDate && targetD >= new Date(cycleEolDate);
+
+        // Per-cycle safe result (needed to mark the ✓ Safe badge correctly)
+        const cycleSafe = getSafeLatest([{ v: String(v), d: String(d) }], targetDate);
 
         let badge = '';
         let rowClass = '';
         if (!isAvailable) {
             badge = `<span class="release-row-badge badge-future">Future</span>`;
-        } else if (String(v) === String(safeV)) {
-            badge = `<span class="release-row-badge badge-safe">✓ Safe</span>`;
-            rowClass = 'safe-row';
-        } else if (String(v) === String(freshV)) {
-            badge = `<span class="release-row-badge badge-fresh">Too fresh</span>`;
-        } else if (daysOld >= 0) {
+        } else if (isEolOnDate) {
+            badge = `<span class="release-row-badge badge-eol">EOL</span>`;
+        } else if (cycleSafe.safe && cycleSafe.safe.v !== 'Not released yet') {
+            if (cycleSafe.fresh) {
+                badge = `<span class="release-row-badge badge-fresh">Too fresh</span>`;
+            } else {
+                badge = `<span class="release-row-badge badge-safe">✓ Safe</span>`;
+                rowClass = 'safe-row';
+            }
+        } else {
             badge = `<span class="release-row-badge badge-older">Older</span>`;
         }
 
         let eolCell = '—';
-        let eolClass = '';
         if (eol && eol !== false) {
             const daysLeft = Math.floor((new Date(eol) - new Date()) / 86400000);
             if (daysLeft < 0) {
-                eolCell  = `<span style="color:var(--eol-red)">${formatDate(String(eol))}</span>`;
-                eolClass = 'style="color:var(--eol-red)"';
+                eolCell = `<span style="color:var(--eol-red)">${formatDate(String(eol))}</span>`;
             } else if (daysLeft < WARN_EOL_DAYS) {
-                eolCell  = `<span style="color:var(--warn)">${formatDate(String(eol))} (${relativeTime(String(eol))})</span>`;
+                eolCell = `<span style="color:var(--warn)">${formatDate(String(eol))} (${relativeTime(String(eol))})</span>`;
             } else {
-                eolCell  = `${formatDate(String(eol))} <span style="color:var(--ink-3);font-size:0.75em">(${relativeTime(String(eol))})</span>`;
+                eolCell = `${formatDate(String(eol))} <span style="color:var(--ink-3);font-size:0.75em">(${relativeTime(String(eol))})</span>`;
             }
         } else if (eol === false) {
             eolCell = `<span style="color:var(--safe)">Active</span>`;
@@ -496,7 +610,7 @@ function renderProductView(slug, cycles, targetDate) {
                 <td><span class="version-mono">${v}</span> ${ltsCell}</td>
                 <td>${formatDate(d)}</td>
                 <td>${eolCell}</td>
-                <td>${isAvailable ? badge : badge}</td>
+                <td>${badge}</td>
             </tr>`;
     }).join('');
 
@@ -518,6 +632,60 @@ function renderProductView(slug, cycles, targetDate) {
     tableSection.appendChild(tableHeader);
     tableSection.appendChild(tableBody);
     container.appendChild(tableSection);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HELPER: build one version card DOM node
+   Used by renderProductView for both single-stream and multi-cycle paths.
+   Platform EOL is passed as an ISO date string or null.
+══════════════════════════════════════════════════════════════════════ */
+function _buildSingleCard(name, safeResult, eolDateStr, targetDate, isFuture) {
+    const { safe, fresh, latestDays } = safeResult;
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const targetD  = new Date(targetDate);
+    const isEol    = eolDateStr && targetD >= new Date(eolDateStr);
+    if (isEol) card.classList.add('card--eol');
+
+    if (safe.v === 'Not released yet') {
+        card.innerHTML = `
+            <div class="card-name">${name}</div>
+            <div class="card-version-block">
+                <div class="card-version-label">Safe version</div>
+                <div class="not-released">Not released yet</div>
+            </div>`;
+        return card;
+    }
+
+    if (isEol) {
+        card.innerHTML = `
+            <div class="card-name">${name}</div>
+            <div class="card-eol-banner">
+                <span class="card-eol-icon">⚠</span>
+                <div>
+                    <div class="card-eol-title">End of Life</div>
+                    <div class="card-eol-date">Support ended ${formatDate(eolDateStr)} — no further security patches</div>
+                </div>
+            </div>`;
+        return card;
+    }
+
+    card.innerHTML = `
+        <div class="card-name">${name}</div>
+        <div class="card-version-block">
+            <div class="card-version-label">✓ Latest safe version</div>
+            <div class="card-version-number">${safe.v}</div>
+            <div class="card-version-date">Released ${formatDate(safe.d)}</div>
+        </div>
+        ${fresh ? `
+        <div class="card-fresh-note">
+            ⚠ Newer version <strong>${fresh.v}</strong> (${formatDate(fresh.d)}) was only
+            ${latestDays} day${latestDays !== 1 ? 's' : ''} old — too fresh to be safe
+        </div>` : ''}
+        ${isFuture ? `<div class="future-badge">Future OS</div>` : ''}
+    `;
+    return card;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
