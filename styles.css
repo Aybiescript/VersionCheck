@@ -10,7 +10,7 @@
 
     --ink:         #f0f0f5;
     --ink-2:       #9898b0;
-    --ink-3:       #5c5c72;
+    --ink-3:       #ffffff;
 
     --accent:      #7b6cff;
     --accent-2:    #a78bfa;
@@ -51,7 +51,7 @@ html.light {
 
     --ink:         #0d0d16;
     --ink-2:       #52526a;
-    --ink-3:       #ffffff;
+    --ink-3:       #000000;
 
     --accent:      #5b4ee8;
     --accent-2:    #7c5cf5;
