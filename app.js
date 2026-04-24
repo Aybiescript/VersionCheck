@@ -88,6 +88,177 @@ function filterLinks(query) {
 }
 
 
+/* ── SIDEBAR ──────────────────────────────── */
+let selectedProductKey = null;
+let selectedCategoryId = null;
+
+const Sidebar = (() => {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('sidebarToggle');
+    const reopenBtn = document.getElementById('sidebarReopenBtn');
+    const categoriesContainer = document.getElementById('sidebarCategories');
+
+    function init() {
+        populateCategories();
+        toggle.addEventListener('click', toggleSidebar);
+        reopenBtn.addEventListener('click', openSidebar);
+    }
+
+    function toggleSidebar() {
+        sidebar.classList.toggle('collapsed');
+    }
+
+    function openSidebar() {
+        sidebar.classList.remove('collapsed');
+    }
+
+    function populateCategories() {
+        categoriesContainer.innerHTML = '';
+        
+        groups.forEach(group => {
+            const category = document.createElement('div');
+            category.className = 'sidebar-category';
+            category.dataset.categoryId = group.id;
+
+            const header = document.createElement('div');
+            header.className = 'sidebar-category-header';
+            header.innerHTML = `
+                <span class="category-icon">${GROUP_ICONS[group.id] || '📦'}</span>
+                <span class="category-name">${group.title}</span>
+                <span class="category-count">${group.platforms.length}</span>
+                <span class="category-chevron">▾</span>
+            `;
+            header.addEventListener('click', () => {
+                toggleCategoryDropdown(header);
+                selectCategory(group.id, group.title);
+            });
+
+            const body = document.createElement('div');
+            body.className = 'sidebar-category-body';
+
+            group.platforms.forEach(platform => {
+                const item = document.createElement('button');
+                item.className = 'product-item';
+                item.dataset.productKey = platform.key;
+                item.dataset.productName = platform.name.toLowerCase();
+                item.dataset.categoryId = group.id;
+                
+                const isEol = platform.eol;
+                
+                item.innerHTML = `
+                    <span class="product-name">${platform.name}</span>
+                    ${isEol ? '<span class="product-eol-badge">EOL</span>' : ''}
+                `;
+                
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent triggering category click
+                    selectProduct(platform.key, platform.name);
+                });
+                
+                body.appendChild(item);
+            });
+
+            category.appendChild(header);
+            category.appendChild(body);
+            categoriesContainer.appendChild(category);
+        });
+    }
+
+    function toggleCategoryDropdown(header) {
+        const body = header.nextElementSibling;
+        header.classList.toggle('open');
+        body.classList.toggle('open');
+    }
+
+    return { init, toggleSidebar };
+})();
+
+
+/* ── SIDEBAR SEARCH ─────────────────────────── */
+function filterSidebar(query) {
+    const q = query.trim().toLowerCase();
+    
+    document.querySelectorAll('.sidebar-category').forEach(cat => {
+        let visibleProducts = 0;
+        
+        cat.querySelectorAll('.product-item').forEach(product => {
+            const productName = product.dataset.productName || '';
+            const match = !q || productName.includes(q);
+            product.classList.toggle('hidden', !match);
+            if (match) visibleProducts++;
+        });
+        
+        // Hide category if no products match
+        cat.classList.toggle('hidden', visibleProducts === 0 && q.length > 0);
+        
+        // Auto-expand categories with matches
+        if (visibleProducts > 0 && q.length > 0) {
+            const header = cat.querySelector('.sidebar-category-header');
+            const body = cat.querySelector('.sidebar-category-body');
+            header.classList.add('open');
+            body.classList.add('open');
+        }
+    });
+}
+
+
+/* ── PRODUCT SELECTION ──────────────────────── */
+function selectProduct(productKey, productName) {
+    selectedProductKey = productKey;
+    selectedCategoryId = null; // Clear category selection when selecting individual product
+    
+    // Update active state in sidebar
+    document.querySelectorAll('.product-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Remove active state from category headers
+    document.querySelectorAll('.sidebar-category-header').forEach(header => {
+        header.classList.remove('active-category');
+    });
+    
+    if (productKey === null) {
+        document.querySelector('.product-item--all').classList.add('active');
+    } else {
+        const selectedItem = document.querySelector(`[data-product-key="${productKey}"]`);
+        if (selectedItem) selectedItem.classList.add('active');
+    }
+    
+    // Re-run version check with selected product
+    checkVersions();
+}
+
+
+/* ── CATEGORY SELECTION ─────────────────────── */
+function selectCategory(categoryId, categoryTitle) {
+    selectedCategoryId = categoryId;
+    selectedProductKey = null; // Clear individual product selection
+    
+    // Update active state in sidebar
+    document.querySelectorAll('.product-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Remove "All Products" active state
+    document.querySelector('.product-item--all').classList.remove('active');
+    
+    // Highlight all products in this category
+    document.querySelectorAll(`[data-category-id="${categoryId}"] .product-item`).forEach(item => {
+        item.classList.add('active');
+    });
+    
+    // Add active state to category header
+    document.querySelectorAll('.sidebar-category-header').forEach(header => {
+        header.classList.remove('active-category');
+    });
+    const categoryHeader = document.querySelector(`[data-category-id="${categoryId}"] .sidebar-category-header`);
+    if (categoryHeader) categoryHeader.classList.add('active-category');
+    
+    // Re-run version check with selected category
+    checkVersions();
+}
+
+
 /* ── GROUP ICONS ─────────────────────────────── */
 const GROUP_ICONS = {
     browsers: '🌏',
@@ -178,13 +349,32 @@ window.checkVersions = function () {
 
     const header = document.createElement('div');
     header.className = 'result-header';
+    
+    // Determine what's selected and show it in the header
+    let selectedInfo = '';
+    if (selectedProductKey) {
+        selectedInfo = ` — ${getProductNameByKey(selectedProductKey)}`;
+    } else if (selectedCategoryId) {
+        selectedInfo = ` — ${getCategoryNameById(selectedCategoryId)}`;
+    }
+    
     header.innerHTML = `
         <div class="result-date-pill">
-            <span>📅</span> Safe versions as of ${formatDate(input)}
+            <span>📅</span> Safe versions as of ${formatDate(input)}${selectedInfo}
         </div>`;
     container.appendChild(header);
 
-    groups.forEach((group, gi) => {
+    // Filter groups based on selection
+    let filteredGroups;
+    if (selectedProductKey) {
+        filteredGroups = filterGroupsByProduct(selectedProductKey);
+    } else if (selectedCategoryId) {
+        filteredGroups = filterGroupsByCategory(selectedCategoryId);
+    } else {
+        filteredGroups = groups;
+    }
+
+    filteredGroups.forEach((group, gi) => {
         const section = document.createElement('div');
         section.className = 'section';
         section.style.animationDelay = `${gi * 60}ms`;
@@ -228,7 +418,8 @@ window.checkVersions = function () {
         section.appendChild(sectionBody);
         container.appendChild(section);
 
-        if (gi === 0) {
+        // Auto-expand when a specific product or category is selected
+        if (selectedProductKey || selectedCategoryId) {
             sectionHeader.classList.add('open');
             sectionBody.classList.add('open');
         }
@@ -236,9 +427,52 @@ window.checkVersions = function () {
 };
 
 
+/* ── HELPER: Filter groups by selected product ─── */
+function filterGroupsByProduct(productKey) {
+    const filtered = [];
+    
+    groups.forEach(group => {
+        const matchingPlatforms = group.platforms.filter(p => p.key === productKey);
+        
+        if (matchingPlatforms.length > 0) {
+            filtered.push({
+                ...group,
+                platforms: matchingPlatforms
+            });
+        }
+    });
+    
+    return filtered;
+}
+
+
+/* ── HELPER: Filter groups by selected category ── */
+function filterGroupsByCategory(categoryId) {
+    return groups.filter(group => group.id === categoryId);
+}
+
+
+/* ── HELPER: Get product name by key ──────────── */
+function getProductNameByKey(productKey) {
+    for (const group of groups) {
+        const platform = group.platforms.find(p => p.key === productKey);
+        if (platform) return platform.name;
+    }
+    return '';
+}
+
+
+/* ── HELPER: Get category name by id ──────────── */
+function getCategoryNameById(categoryId) {
+    const group = groups.find(g => g.id === categoryId);
+    return group ? group.title : '';
+}
+
+
 /* ── INIT ───────────────────────────────────── */
 window.addEventListener('load', () => {
     Theme.init();
+    Sidebar.init();
 
     // Open all link categories
     document.querySelectorAll('.lcat-header').forEach(h => {

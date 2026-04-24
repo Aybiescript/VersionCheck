@@ -29,6 +29,36 @@
     </div>
 </nav>
 
+<!-- SIDEBAR -->
+<aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        <div class="sidebar-header">
+            <h3 class="sidebar-title">Products</h3>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                ◀
+            </button>
+        </div>
+        
+        <div class="sidebar-search">
+            <input type="text" id="sidebarSearch" placeholder="Search products..." oninput="filterSidebar(this.value)">
+        </div>
+        
+        <div class="sidebar-all-products">
+            <button class="product-item product-item--all active" onclick="selectProduct(null)">
+                <span class="product-icon">🏠</span>
+                <span class="product-name">All Products</span>
+            </button>
+        </div>
+        
+        <div id="sidebarCategories" class="sidebar-categories"></div>
+    </div>
+</aside>
+
+<!-- Floating button to reopen sidebar when collapsed -->
+<button class="sidebar-reopen-btn" id="sidebarReopenBtn" aria-label="Show products sidebar">
+    <span>▶</span>
+    <span class="sidebar-reopen-text">Products</span>
+</button>
 
 <div id="view-home" class="view active">
     <section class="hero">
