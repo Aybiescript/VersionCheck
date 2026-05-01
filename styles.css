@@ -34,7 +34,7 @@
     --radius-sm:   8px;
     --radius:      14px;
     --radius-lg:   22px;
-    --font-display: 'Syne', sans-serif;
+    --font-display: 'Space Grotesk', sans-serif;
     --font-mono:    'JetBrains Mono', monospace;
     --font-body:    'Inter', sans-serif;
     --nav-h:       60px;
@@ -419,19 +419,19 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 }
 
 .btn-ch {
-    background: #dc2626 !important;
-    box-shadow: 0 8px 24px rgba(220, 38, 38, 0.35) !important;
+    background: #dc2626;
+    box-shadow: 0 8px 24px rgba(220, 38, 38, 0.35);
 }
 .btn-ch:hover {
-    box-shadow: 0 12px 32px rgba(220, 38, 38, 0.45) !important;
+    box-shadow: 0 12px 32px rgba(220, 38, 38, 0.45);
 }
 
 .btn-saas {
-    background: #0891b2 !important;
-    box-shadow: 0 8px 24px rgba(8, 145, 178, 0.35) !important;
+    background: #0891b2;
+    box-shadow: 0 8px 24px rgba(8, 145, 178, 0.35);
 }
 .btn-saas:hover {
-    box-shadow: 0 12px 32px rgba(8, 145, 178, 0.45) !important;
+    box-shadow: 0 12px 32px rgba(8, 145, 178, 0.45);
 }
 
 .saas-check-wrap {
@@ -1185,6 +1185,111 @@ html.light .card-eol-date { color: #b91c1c; }
     font-size: 0.85rem;
 }
 
+/* ── RELEASE HISTORY WIDGET ── */
+.release-history-widget {
+    margin: 24px 0 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    animation: fadeUp 0.3s var(--ease) both;
+}
+
+.rh-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.rh-title {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.rh-subtitle {
+    font-size: 0.75rem;
+    color: var(--ink-2);
+}
+
+.rh-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.rh-table thead tr {
+    background: var(--surface-2);
+}
+
+.rh-table th {
+    padding: 8px 18px;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+}
+
+.rh-table td {
+    padding: 10px 18px;
+    border-top: 1px solid var(--border);
+    color: var(--ink);
+    vertical-align: middle;
+}
+
+.rh-table tbody tr:hover {
+    background: var(--surface-2);
+}
+
+.rh-version {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.rh-date {
+    color: var(--ink-2);
+}
+
+.rh-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.rh-safe {
+    background: var(--safe-dim);
+    color: var(--safe);
+    border: 1px solid rgba(34, 211, 160, 0.25);
+}
+
+.rh-eol {
+    background: rgba(239, 68, 68, 0.10);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.rh-fresh {
+    background: var(--warn-dim);
+    color: var(--warn);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+html.light .rh-eol { color: #dc2626; }
+html.light .rh-safe { color: #059669; }
+html.light .rh-fresh { color: #d97706; }
+
 /* Mobile sidebar */
 @media (max-width: 768px) {
     .sidebar {
@@ -1200,24 +1305,4 @@ html.light .card-eol-date { color: #b91c1c; }
         margin-left: 0;
     }
     
-    .sidebar-toggle-mobile {
-        display: block;
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: var(--accent);
-        color: white;
-        border: none;
-        box-shadow: 0 4px 12px var(--accent-glow);
-        cursor: pointer;
-        z-index: 99;
-        transition: all 0.2s var(--ease);
-    }
-    
-    .sidebar-toggle-mobile:hover {
-        transform: scale(1.1);
-    }
 }

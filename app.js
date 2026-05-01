@@ -65,14 +65,6 @@ function toggleSection(header) {
 }
 
 
-/* ── LINK CATEGORY TOGGLE ────────────────────── */
-function toggleCategory(header) {
-    const body = header.nextElementSibling;
-    header.classList.toggle('open');
-    body.classList.toggle('open');
-}
-
-
 /* ── VENDOR LINK FILTER ──────────────────────── */
 function filterLinks(query) {
     const q = query.trim().toLowerCase();
@@ -129,7 +121,7 @@ const Sidebar = (() => {
                 <span class="category-chevron">▾</span>
             `;
             header.addEventListener('click', () => {
-                toggleCategoryDropdown(header);
+                toggleSection(header);
                 selectCategory(group.id, group.title);
             });
 
@@ -162,12 +154,6 @@ const Sidebar = (() => {
             category.appendChild(body);
             categoriesContainer.appendChild(category);
         });
-    }
-
-    function toggleCategoryDropdown(header) {
-        const body = header.nextElementSibling;
-        header.classList.toggle('open');
-        body.classList.toggle('open');
     }
 
     return { init, toggleSidebar };
@@ -339,6 +325,72 @@ function renderCard(platform, data, selectedDate) {
 }
 
 
+/* ── RELEASE HISTORY WIDGET ──────────────────── */
+function renderReleaseHistory(productKey, selectedDate) {
+    let platform = null;
+    for (const group of groups) {
+        const found = group.platforms.find(p => p.key === productKey);
+        if (found) { platform = found; break; }
+    }
+    if (!platform) return null;
+
+    const releaseList = releases[productKey];
+    if (!releaseList) return null;
+
+    const target = new Date(selectedDate);
+    const available = releaseList.filter(r => new Date(r.d) <= target);
+    if (!available.length) return null;
+
+    const { safe } = getSafeLatest(releaseList, selectedDate);
+    if (safe.v === 'Not released yet') return null;
+
+    const isProductEol = platform.eol && target >= new Date(platform.eol);
+    const shown = available.slice(0, 5);
+
+    const rows = shown.map((v, i) => {
+        let label, cls;
+        if (isProductEol) {
+            label = 'EOL'; cls = 'rh-eol';
+        } else if (v.v === safe.v && v.d === safe.d) {
+            label = 'Safe'; cls = 'rh-safe';
+        } else {
+            const daysSince = (target - new Date(v.d)) / 86400000;
+            if (daysSince < 14) {
+                label = 'Too fresh'; cls = 'rh-fresh';
+            } else {
+                const prev = shown[i - 1];
+                label = prev ? `EOL on ${formatDate(prev.d)}` : 'Superseded';
+                cls = 'rh-eol';
+            }
+        }
+        return `<tr>
+            <td class="rh-version">${v.v}</td>
+            <td class="rh-date">${formatDate(v.d)}</td>
+            <td><span class="rh-status ${cls}">${label}</span></td>
+        </tr>`;
+    }).join('');
+
+    const widget = document.createElement('div');
+    widget.className = 'release-history-widget';
+    widget.innerHTML = `
+        <div class="rh-header">
+            <span class="rh-title">Release History</span>
+            <span class="rh-subtitle">${platform.name} — ${shown.length} most recent</span>
+        </div>
+        <table class="rh-table">
+            <thead>
+                <tr>
+                    <th>Version Release</th>
+                    <th>Date Released</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+    return widget;
+}
+
+
 /* ── MAIN: CHECK VERSIONS ────────────────────── */
 window.checkVersions = function () {
     const input = document.getElementById('dateInput').value;
@@ -424,6 +476,11 @@ window.checkVersions = function () {
             sectionBody.classList.add('open');
         }
     });
+
+    if (selectedProductKey) {
+        const historyWidget = renderReleaseHistory(selectedProductKey, input);
+        if (historyWidget) container.appendChild(historyWidget);
+    }
 };
 
 
