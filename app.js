@@ -83,6 +83,7 @@ function filterLinks(query) {
 /* ── SIDEBAR ──────────────────────────────── */
 let selectedProductKey = null;
 let selectedCategoryId = null;
+let previousCategoryId = null; // used by back button when drilling into a product from a category
 
 const Sidebar = (() => {
     const sidebar = document.getElementById('sidebar');
@@ -190,6 +191,10 @@ function filterSidebar(query) {
 
 /* ── PRODUCT SELECTION ──────────────────────── */
 function selectProduct(productKey, productName) {
+    // Remember which category we came from so back button works
+    if (productKey !== null) {
+        previousCategoryId = selectedCategoryId;
+    }
     selectedProductKey = productKey;
     selectedCategoryId = null; // Clear category selection when selecting individual product
     
@@ -245,7 +250,21 @@ function selectCategory(categoryId, categoryTitle) {
 }
 
 
-/* ── GROUP ICONS ─────────────────────────────── */
+/* ── BACK TO CATEGORY ────────────────────────── */
+function goBackToCategory() {
+    const catId = previousCategoryId;
+    selectedProductKey = null;
+    previousCategoryId = null;
+    if (catId) {
+        const group = groups.find(g => g.id === catId);
+        selectCategory(catId, group ? group.title : '');
+    } else {
+        selectProduct(null);
+    }
+}
+
+
+
 const GROUP_ICONS = {
     browsers: '🌏',
     macos:    '💻',
@@ -277,6 +296,13 @@ function renderCard(platform, data, selectedDate) {
     const { safe, fresh, latestDays } = data;
     const card = document.createElement('div');
     card.className = 'card';
+
+    // If we're viewing a category (not already a single product), make cards clickable
+    if (!selectedProductKey) {
+        card.classList.add('card--clickable');
+        card.title = `View ${platform.name} details`;
+        card.addEventListener('click', () => selectProduct(platform.key, platform.name));
+    }
 
     // Check if this platform is EOL as of the selected date
     const isEol = platform.eol && new Date(selectedDate) >= new Date(platform.eol);
@@ -446,6 +472,7 @@ window.checkVersions = function () {
 
         sectionHeader.innerHTML = `
             <div class="section-header-left">
+                ${selectedProductKey ? `<button class="result-back-btn" onclick="event.stopPropagation(); goBackToCategory()" title="Back">&#8592; Back</button>` : ''}
                 <span class="section-icon">${GROUP_ICONS[group.id] ?? '📦'}</span>
                 <div class="section-header-text">
                     <span class="section-title">${group.title}</span>

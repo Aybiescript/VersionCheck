@@ -459,6 +459,41 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
     margin-bottom: 40px;
 }
 
+.result-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(128,128,128,0.12);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--ink-2);
+    font-family: var(--font);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 11px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.result-back-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--safe-dim);
+}
+
+.card--clickable {
+    cursor: pointer;
+}
+.card--clickable:hover {
+    border-color: var(--accent);
+    box-shadow: 0 12px 32px var(--card-shadow);
+}
+.card--clickable:hover::before {
+    opacity: 1;
+}
+
+
+
 .result-date-pill {
     display: inline-flex;
     align-items: center;
