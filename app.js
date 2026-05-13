@@ -585,6 +585,28 @@ function doCompaniesHouseCheck() {
     window.open(url, '_blank');
 }
 
+function doWhoisIpLookup() {
+    const input = document.getElementById('whoisIpInput');
+    const error = document.getElementById('whoisIpError');
+    const query = input.value.trim();
+
+    // Validate: must be a non-empty, valid public IPv4 or IPv6 address
+    const ipv4 = /^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/;
+    const ipv6 = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
+
+    // Private/loopback ranges to reject
+    const isPrivate = /^(10\.|127\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|::1$|fc|fd)/i;
+
+    if (!query || (!ipv4.test(query) && !ipv6.test(query)) || isPrivate.test(query)) {
+        error.style.display = 'block';
+        input.focus();
+        return;
+    }
+
+    error.style.display = 'none';
+    window.open('https://www.whois.com/whois/' + encodeURIComponent(query), '_blank');
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     const chInput = document.getElementById('chSearchInput');
     if (chInput) {
@@ -595,6 +617,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         chInput.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') doCompaniesHouseCheck();
+        });
+    }
+
+    const whoisInput = document.getElementById('whoisIpInput');
+    if (whoisInput) {
+        whoisInput.addEventListener('input', function () {
+            if (this.value.trim()) {
+                document.getElementById('whoisIpError').style.display = 'none';
+            }
+        });
+        whoisInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') doWhoisIpLookup();
         });
     }
 });

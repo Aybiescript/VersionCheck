@@ -70,16 +70,6 @@
         <div class="hero-content">
             <h1 class="hero-title">Version<br><em>Time Machine</em></h1>
             <p class="hero-sub">Pick any date — instantly see the safest stable version of every major platform that was available then, with a built-in <strong>14-day buffer</strong>.</p>
-            <div class="date-picker-wrap">
-                <div class="date-picker-inner">
-                    <label for="dateInput">Assessment date</label>
-                    <input type="date" id="dateInput" max="2027-01-01">
-                    <button class="btn-primary" onclick="checkVersions()">
-                        <span>Show Versions</span>
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
-                </div>
-            </div>
             <div class="ch-check-wrap">
                 <div class="ch-check-inner">
                     <input type="text" id="chSearchInput" placeholder="Enter company name, number or officer name">
@@ -90,11 +80,31 @@
                 </div>
                 <p id="chError" class="ch-error" style="display:none;">Field empty.</p>
             </div>
+            <div class="ch-check-wrap">
+                <div class="ch-check-inner">
+                    <input type="text" id="whoisIpInput" placeholder="Enter a public IP address">
+                    <button class="btn-primary btn-whois" onclick="doWhoisIpLookup()">
+                        <span>Whois IP Lookup</span>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+                <p id="whoisIpError" class="ch-error" style="display:none;">Please enter a valid public IP address.</p>
+            </div>
             <div class="saas-check-wrap">
                 <button class="btn-primary btn-saas" onclick="window.open('https://authcheck.wearekeep.co.uk/compliance', '_blank')">
                     <span>Does your SaaS support SSO and MFA?</span>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
+            </div>
+            <div class="ch-check-wrap">
+                <div class="date-picker-inner">
+                    <label for="dateInput">Assessment date</label>
+                    <input type="date" id="dateInput" max="2027-01-01">
+                    <button class="btn-primary" onclick="checkVersions()">
+                        <span>Show Versions</span>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
             </div>
         </div>
     </section>
