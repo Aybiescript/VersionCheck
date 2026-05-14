@@ -631,4 +631,36 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.key === 'Enter') doWhoisIpLookup();
         });
     }
+
+    const auditDays = document.getElementById('auditDaysToAdd');
+    if (auditDays) {
+        auditDays.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') calculateAuditDate();
+        });
+    }
 });
+
+/* ── AUDIT DATE CALCULATOR ────────────────────── */
+function calculateAuditDate() {
+    const dateVal = document.getElementById('auditStartDate').value;
+    const daysVal = document.getElementById('auditDaysToAdd').value;
+    const result  = document.getElementById('auditDateResult');
+    const display = document.getElementById('auditDateDisplay');
+    const error   = document.getElementById('auditDateError');
+
+    if (!dateVal || daysVal === '') {
+        error.style.display = 'block';
+        result.style.display = 'none';
+        return;
+    }
+    error.style.display = 'none';
+
+    const parts = dateVal.split('-');
+    const date  = new Date(parts[0], parts[1] - 1, parts[2]);
+    date.setDate(date.getDate() + parseInt(daysVal));
+
+    display.textContent = date.toLocaleDateString(undefined, {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    result.style.display = 'flex';
+}

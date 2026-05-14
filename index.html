@@ -21,6 +21,7 @@
             <div class="nav-tabs" id="navTabs">
                 <button class="nav-tab active" data-view="home">Time Machine</button>
                 <button class="nav-tab" data-view="links">Release Notes</button>
+                <button class="nav-tab" data-view="widgets">Widgets</button>
             </div>
             <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark mode" title="Toggle theme">
                 ☀️
@@ -712,6 +713,47 @@
                     </div>
                 </div>
             </div>
+
+        </div>
+    </div>
+</div>
+
+
+<div id="view-widgets" class="view">
+    <div class="widgets-view-inner">
+        <div class="widgets-hero">
+            <h2>Widgets</h2>
+            <p>Utility tools to support your audit and assessment workflow</p>
+        </div>
+        <div class="widgets-grid">
+
+            <!-- ── AUDIT DATE CALCULATOR ── -->
+            <div class="widget-card widget-card--wide">
+                <div class="widget-banner">
+                    <img src="steve-date-calculator.png" alt="Steve's Date Calculator" class="widget-banner-img">
+                </div>
+                <div class="widget-body">
+                    <div class="widget-field">
+                        <label for="auditStartDate" class="widget-label">Start Date</label>
+                        <input type="date" id="auditStartDate" class="widget-input">
+                    </div>
+                    <div class="widget-field">
+                        <label for="auditDaysToAdd" class="widget-label">Days to Add</label>
+                        <input type="number" id="auditDaysToAdd" value="30" min="1" class="widget-input">
+                    </div>
+                    <button class="btn-primary btn-widget" onclick="calculateAuditDate()">
+                        <span>Calculate End Date</span>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <div id="auditDateResult" class="widget-result" style="display:none;">
+                        <span class="widget-result-label">End Date</span>
+                        <div id="auditDateDisplay" class="widget-result-value"></div>
+                    </div>
+                    <p id="auditDateError" class="ch-error" style="display:none;">Please fill in both fields.</p>
+                </div>
+            </div>
+
+            <!-- future widgets stack here -->
 
         </div>
     </div>
