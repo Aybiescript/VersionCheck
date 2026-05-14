@@ -215,8 +215,10 @@ function selectProduct(productKey, productName) {
         if (selectedItem) selectedItem.classList.add('active');
     }
     
-    // Re-run version check with selected product
+    // Switch to Time Machine view if on a different tab, then run check
+    App.show('home');
     checkVersions();
+    document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 
@@ -245,8 +247,10 @@ function selectCategory(categoryId, categoryTitle) {
     const categoryHeader = document.querySelector(`[data-category-id="${categoryId}"] .sidebar-category-header`);
     if (categoryHeader) categoryHeader.classList.add('active-category');
     
-    // Re-run version check with selected category
+    // Switch to Time Machine view if on a different tab, then run check
+    App.show('home');
     checkVersions();
+    document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 
