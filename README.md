@@ -4,14 +4,7 @@ A powerful web tool for moderators, compliance teams, and security auditors to c
 
 **Live Demo:** https://cool.cyberessentials.tools/versioncheck/
 
-## Overview
-
-Version Time Machine helps you answer questions like:
-- "Was Chrome version 128 the latest stable version on September 1st, 2024?"
-- "What was the most recent safe version of macOS Sonoma on January 15th, 2025?"
-- "Which .NET version should have been deployed in Q3 2024?"
-
-The tool includes a built-in **14-day safety buffer** to ensure versions are mature and stable before being recommended.
+![image](assets/home.png)
 
 ## Features
 
@@ -23,6 +16,9 @@ The tool includes a built-in **14-day safety buffer** to ensure versions are mat
 
 ### Sidebar Navigation
 - **Product Browser** - Organized sidebar with all products categorized by type
+
+![image](assets/product.png)
+
 - **Smart Search** - Filter products by name in real-time
 - **Category Selection** - Click any category to view all products in that group
 - **Individual Selection** - Click specific products to focus on just that version
@@ -84,6 +80,9 @@ Each version card displays:
 - **Release Date** - When that version was released
 - **Fresh Warning** - If a newer version existed but was too fresh
 - **EOL Badge** - For products that have reached End of Life
+
+![image](assets/dates.png)
+
 - **Future Badge** - For upcoming OS versions
 
 ### Example Scenarios
@@ -111,11 +110,4 @@ The tool applies a 14-day maturity buffer to ensure stability:
 2. Filters for versions that are at least 14 days old
 3. Returns the most recent version that meets this criteria
 4. Flags newer versions as "too fresh" if they don't meet the buffer
-
-### Data Sources
-Version release dates are compiled from official vendor sources. See the "Release Notes" tab for links to:
-- Official release calendars
-- Security update schedules
-- End of Life policies
-- Product lifecycle documentation
 
